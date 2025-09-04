@@ -1,0 +1,17 @@
+# Папки зависимостей
+backend/venv/
+frontend/node_modules/
+
+# Сборки
+frontend/build/
+
+# Системные файлы
+.DS_Store
+*.pyc
+
+# Файлы переменных окружения
+.env
+
+instance/
+migrations/
+static/
