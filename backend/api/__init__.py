@@ -16,10 +16,12 @@ def create_app(config_class=Config):
     from .routes.presentations import presentations_bp
     from .routes.slides import slides_bp
     from .routes.elements import elements_bp
+    from .routes.ai_generator import ai_bp 
 
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(presentations_bp, url_prefix='/api')
     app.register_blueprint(slides_bp, url_prefix='/api')
     app.register_blueprint(elements_bp, url_prefix='/api')
+    app.register_blueprint(ai_bp, url_prefix='/api')
 
     return app

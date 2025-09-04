@@ -5,6 +5,7 @@ import { usePresentation, SlideElement } from '../hooks/usePresentation';
 import { SlideList } from '../components/EditorPage/SlideList';
 import { SlideEditor } from '../components/EditorPage/SlideEditor';
 import { EditorToolbar } from '../components/EditorPage/EditorToolbar';
+import { AiChatPanel } from '../components/EditorPage/AiChatPanel';
 import apiClient from '../services/apiService';
 import { useNotification } from '../context/NotificationContext';
 
@@ -286,7 +287,7 @@ export const EditorPage = () => {
             <Box sx={{ transform: `scale(${scale})`, transformOrigin: 'center center', position: 'relative' }}>
               <SlideEditor 
                 ref={slideEditorRef}
-                slide={activeSlide} 
+                slide={activeSlide}
                 scale={scale}
                 selectedElementIds={selectedElementIds}
                 onSelectElement={handleSelectElement}
@@ -314,6 +315,7 @@ export const EditorPage = () => {
               )}
             </Box>
           </Box>
+          <AiChatPanel />
         </Box>
       </Box>
       <Dialog open={isRenameOpen} onClose={handleCloseRename} fullWidth maxWidth="xs">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Typography, Grid, Box, Divider, CircularProgress } from '@mui/material';
 import apiClient from '../services/apiService';
 import { CreatePresentationCard } from '../components/HomePage/CreatePresentationCard';
+import { GenerateAiCard } from '../components/HomePage/GenerateAiCard';
 import { PresentationCard } from '../components/HomePage/PresentationCard';
 import { Slide } from '../hooks/usePresentation';
 
@@ -45,7 +46,10 @@ export const HomePage = () => {
         <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
           Создать презентацию
         </Typography>
-        <CreatePresentationCard />
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <CreatePresentationCard />
+          <GenerateAiCard />
+        </Box>
       </Box>
       <Divider />
       <Box sx={{ mt: 4 }}>
