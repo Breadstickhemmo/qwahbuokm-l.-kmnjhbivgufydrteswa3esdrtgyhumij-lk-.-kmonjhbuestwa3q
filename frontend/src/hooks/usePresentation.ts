@@ -19,6 +19,7 @@ export interface Slide {
   id: number;
   slide_number: number;
   background_color: string;
+  background_image: string | null;
   elements: SlideElement[];
 }
 

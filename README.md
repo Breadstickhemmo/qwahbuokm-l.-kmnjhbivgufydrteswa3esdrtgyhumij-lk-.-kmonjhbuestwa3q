@@ -45,7 +45,7 @@
 
 ###  AI-интеграции
 *   **Генерация контента:** API GigaChat
-*   **Создание изображений:** API gpt4o-image
+*   **Создание изображений:** API kandinsky
 
 ## Установка и запуск проекта
 
@@ -96,9 +96,12 @@ cd qwahbuokm-l.-kmnjhbivgufydrteswa3esdrtgyhumij-lk-.-kmonjhbuestwa3q
     *   Создайте файл `.env` в папке `backend`.
     ```env
     FLASK_APP=run.py
-    SECRET_KEY=ВАШ_СУПЕР_СЕКРЕТНЫЙ_КЛЮЧ_ЗДЕСЬ
-    IMAGE_GEN_API_KEY=API_КЛЮЧ
-    GIGACHAT_CREDENTIALS=API_КЛЮЧ
+    SECRET_KEY=
+    GIGACHAT_CREDENTIALS=
+    KANDINSKY_API_KEY=
+    KANDINSKY_SECRET_KEY=
+    TELEGRAM_BOT_TOKEN=
+    TELEGRAM_CHAT_ID=
     ```
 
 5.  **Создайте и настройте базу данных:**

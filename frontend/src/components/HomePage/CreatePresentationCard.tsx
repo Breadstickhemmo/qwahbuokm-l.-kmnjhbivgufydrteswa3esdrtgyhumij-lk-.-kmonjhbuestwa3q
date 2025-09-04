@@ -34,10 +34,11 @@ export const CreatePresentationCard = () => {
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        transition: 'box-shadow 0.3s, border-color 0.3s',
+        transition: 'all 0.2s',
         '&:hover': {
           borderColor: 'primary.main',
-          boxShadow: 2,
+          boxShadow: 4,
+          transform: 'translateY(-4px)',
         },
       }}
     >
@@ -45,7 +46,7 @@ export const CreatePresentationCard = () => {
         <CircularProgress />
       ) : (
         <>
-          <AddIcon sx={{ fontSize: 60, color: 'primary.main' }} />
+          <AddIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
           <Typography sx={{ mt: 1 }}>Пустая презентация</Typography>
         </>
       )}

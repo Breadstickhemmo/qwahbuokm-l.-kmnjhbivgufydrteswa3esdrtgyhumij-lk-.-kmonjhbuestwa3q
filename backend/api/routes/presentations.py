@@ -174,14 +174,33 @@ def download_presentation_pdf(presentation_id):
         return jsonify({"message": "Ошибка при конвертации в PDF. Убедитесь, что MS PowerPoint установлен на сервере."}), 500
     
     finally:
-        if pres:
-            pres.Close()
-        if powerpoint:
-            powerpoint.Quit()
-        if os.path.exists(pptx_path):
-            os.remove(pptx_path)
-        if os.path.exists(pdf_path):
-            os.remove(pdf_path)
+        if pres: pres.Close()
+        if powerpoint: powerpoint.Quit()
+        if os.path.exists(pptx_path): os.remove(pptx_path)
+        if os.path.exists(pdf_path): os.remove(pdf_path)
+
+def _serialize_slide(slide):
+    if not slide:
+        return None
+    
+    elements_output = []
+    for e in slide.elements:
+        element_data = {
+            'id': e.id, 'element_type': e.element_type, 'pos_x': e.pos_x,
+            'pos_y': e.pos_y, 'width': e.width, 'height': e.height,
+            'content': e.content, 'font_size': e.font_size
+        }
+        if e.element_type == 'YOUTUBE_VIDEO':
+            element_data['thumbnailUrl'] = f"https://img.youtube.com/vi/{e.content}/0.jpg"
+        elements_output.append(element_data)
+        
+    return {
+        'id': slide.id, 
+        'slide_number': slide.slide_number,
+        'background_color': slide.background_color, 
+        'background_image': slide.background_image,
+        'elements': elements_output
+    }
 
 @presentations_bp.route('/presentations', methods=['POST'])
 @token_required
@@ -194,24 +213,9 @@ def create_presentation():
 
     first_slide = Slide(slide_number=1, presentation_id=new_presentation.id)
     db.session.add(first_slide)
-    db.session.flush()
-
-    title_element = SlideElement(slide_id=first_slide.id, element_type='TEXT', content='Ваш заголовок', pos_x=100, pos_y=100, width=1080, height=150, font_size=44)
-    subtitle_element = SlideElement(slide_id=first_slide.id, element_type='TEXT', content='Ваш подзаголовок', pos_x=100, pos_y=260, width=1080, height=100, font_size=28)
-    db.session.add(title_element)
-    db.session.add(subtitle_element)
-    
     db.session.commit()
-
-    first_slide_data = {
-        'id': first_slide.id,
-        'slide_number': first_slide.slide_number,
-        'background_color': first_slide.background_color,
-        'elements': [
-            {'id': e.id, 'element_type': e.element_type, 'pos_x': e.pos_x, 'pos_y': e.pos_y, 'width': e.width, 'height': e.height, 'content': e.content, 'font_size': e.font_size} 
-            for e in [title_element, subtitle_element]
-        ]
-    }
+    
+    first_slide_data = _serialize_slide(first_slide)
     
     return jsonify({
         'id': new_presentation.id,
@@ -227,54 +231,21 @@ def get_presentation_by_id(presentation_id):
     if presentation.user_id != g.current_user.id:
         return jsonify({'message': 'Доступ запрещен'}), 403
 
-    slides_output = []
     slides = Slide.query.filter_by(presentation_id=presentation.id).order_by(Slide.slide_number).all()
-    for slide in slides:
-        elements_output = []
-        elements = SlideElement.query.filter_by(slide_id=slide.id).all()
-        for e in elements:
-            element_data = {
-                'id': e.id, 'element_type': e.element_type, 'pos_x': e.pos_x,
-                'pos_y': e.pos_y, 'width': e.width, 'height': e.height,
-                'content': e.content, 'font_size': e.font_size
-            }
-            if e.element_type == 'YOUTUBE_VIDEO':
-                element_data['thumbnailUrl'] = f"https://img.youtube.com/vi/{e.content}/0.jpg"
-            elements_output.append(element_data)
-        slides_output.append({
-            'id': slide.id, 'slide_number': slide.slide_number,
-            'background_color': slide.background_color, 'elements': elements_output
-        })
+    slides_output = [_serialize_slide(s) for s in slides]
 
     return jsonify({'id': presentation.id, 'title': presentation.title, 'slides': slides_output}), 200
 
 @presentations_bp.route('/presentations', methods=['GET'])
 @token_required
 def get_presentations():
-    presentations = Presentation.query.filter_by(user_id=g.current_user.id).order_by(Presentation.updated_at.desc()).all()
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем фильтр, чтобы не показывать шаблоны ---
+    presentations = Presentation.query.filter_by(user_id=g.current_user.id, is_template=False).order_by(Presentation.updated_at.desc()).all()
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     output = []
     for p in presentations:
         first_slide = Slide.query.filter_by(presentation_id=p.id, slide_number=1).first()
-        first_slide_data = None
-        if first_slide:
-            elements = SlideElement.query.filter_by(slide_id=first_slide.id).all()
-            elements_output = []
-            for e in elements:
-                element_data = {
-                    'id': e.id, 'element_type': e.element_type, 'pos_x': e.pos_x,
-                    'pos_y': e.pos_y, 'width': e.width, 'height': e.height,
-                    'content': e.content, 'font_size': e.font_size
-                }
-                if e.element_type == 'YOUTUBE_VIDEO':
-                    element_data['thumbnailUrl'] = f"https://img.youtube.com/vi/{e.content}/0.jpg"
-                elements_output.append(element_data)
-            
-            first_slide_data = {
-                'id': first_slide.id,
-                'slide_number': first_slide.slide_number,
-                'background_color': first_slide.background_color,
-                'elements': elements_output
-            }
+        first_slide_data = _serialize_slide(first_slide)
         
         output.append({
             'id': p.id,
@@ -303,16 +274,7 @@ def update_presentation(presentation_id):
     db.session.commit()
     
     first_slide = Slide.query.filter_by(presentation_id=presentation.id, slide_number=1).first()
-    if first_slide:
-        elements = SlideElement.query.filter_by(slide_id=first_slide.id).all()
-        first_slide_data = {
-            'id': first_slide.id,
-            'slide_number': first_slide.slide_number,
-            'background_color': first_slide.background_color,
-            'elements': [{'id': e.id, 'element_type': e.element_type, 'pos_x': e.pos_x, 'pos_y': e.pos_y, 'width': e.width, 'height': e.height, 'content': e.content, 'font_size': e.font_size} for e in elements]
-        }
-    else:
-        first_slide_data = None
+    first_slide_data = _serialize_slide(first_slide)
 
     return jsonify({
         'id': presentation.id,

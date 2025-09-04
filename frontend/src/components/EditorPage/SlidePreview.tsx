@@ -112,9 +112,12 @@ export const SlidePreview: React.FC<{ slide: Slide }> = ({ slide }) => {
         width: 1280,
         height: 720,
         position: 'relative',
-        bgcolor: slide.background_color,
         overflow: 'hidden',
         pointerEvents: 'none',
+        backgroundColor: slide.background_image ? 'transparent' : slide.background_color,
+        backgroundImage: slide.background_image ? `url(http://127.0.0.1:5000${slide.background_image})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
       }}
     >
       {slide.elements.map(element => (

@@ -6,6 +6,7 @@ import { useNotification } from '../context/NotificationContext';
 import { CreatePresentationCard } from '../components/HomePage/CreatePresentationCard';
 import { GenerateAiCard } from '../components/HomePage/GenerateAiCard';
 import { GenerateAiModal } from '../components/HomePage/GenerateAiModal';
+import { TemplateCarousel } from '../components/HomePage/TemplateCarousel';
 import { PresentationCard } from '../components/HomePage/PresentationCard';
 import { Slide } from '../hooks/usePresentation';
 
@@ -63,19 +64,39 @@ export const HomePage = () => {
     }
   };
 
+  const handleCreateFromTemplate = async (templateId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiClient.post('/presentations/from-template', { template_id: templateId });
+      navigate(`/presentations/${response.data.id}`);
+    } catch (error) {
+      showNotification('Не удалось создать презентацию из шаблона', 'error');
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <Container sx={{ mt: 4, mb: 4 }}>
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-            Создать презентацию
+            Начать работу
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
             <CreatePresentationCard />
             <GenerateAiCard onClick={() => setIsAiModalOpen(true)} />
           </Box>
         </Box>
+        
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+            Шаблоны
+          </Typography>
+          <TemplateCarousel onSelectTemplate={handleCreateFromTemplate} />
+        </Box>
+
         <Divider />
+        
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Недавние презентации
@@ -91,7 +112,7 @@ export const HomePage = () => {
           ) : (
             <Grid container spacing={3}>
               {presentations.map(presentation => (
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3}} key={presentation.id}>
+                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={presentation.id}>
                   <PresentationCard
                     presentation={presentation}
                     onDelete={handlePresentationDeleted}
