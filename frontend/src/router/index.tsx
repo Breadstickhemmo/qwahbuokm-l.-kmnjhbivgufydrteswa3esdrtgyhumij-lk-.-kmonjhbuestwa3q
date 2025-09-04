@@ -1,4 +1,6 @@
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { theme } from '../styles/theme';
 import { AuthProvider } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { HomePage } from '../pages/HomePage';
@@ -9,11 +11,14 @@ import { PublicRoutes } from './PublicRoutes';
 
 const RootLayout = () => {
   return (
-    <NotificationProvider>
-      <AuthProvider>
-        <Outlet />
-      </AuthProvider>
-    </NotificationProvider>
+    // 3. Оборачиваем все в ThemeProvider
+    <ThemeProvider theme={theme}>
+      <NotificationProvider>
+        <AuthProvider>
+          <Outlet />
+        </AuthProvider>
+      </NotificationProvider>
+    </ThemeProvider>
   );
 };
 

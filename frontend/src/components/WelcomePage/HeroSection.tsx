@@ -19,9 +19,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onRegisterClick }) => 
           <Typography
             variant="h2"
             component="h1"
-            fontWeight="700"
+            fontWeight="400"
             sx={{
-              fontSize: { xs: '2.2rem', sm: '2.8rem', md: '3.5rem' },
+              fontSize: { xs: '2.2rem', sm: '2.8rem', md: '2.5rem' },
               mb: 3,
               lineHeight: 1.2,
               textAlign: { xs: 'center', md: 'left' },
@@ -41,7 +41,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onRegisterClick }) => 
             }}
           >
             Наш инструмент поможет учителям быстро и легко готовить
-            интерактивные уроки с видео и автоматической генерацией слайдов.
+            интерактивные уроки с видео и автоматической генерацией слайдов
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
             <Button
