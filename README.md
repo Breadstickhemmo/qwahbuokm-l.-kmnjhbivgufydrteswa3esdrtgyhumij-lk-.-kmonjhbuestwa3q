@@ -43,7 +43,7 @@
     *   **API-клиент:** Axios
     *   **Интерактивность:** `react-rnd`, `dnd-kit`
 
-### AI-интеграции
+###  AI-интеграции
 *   **Генерация контента:** API GigaChat
 *   **Создание изображений:** API gpt4o-image
 
@@ -97,6 +97,8 @@ cd qwahbuokm-l.-kmnjhbivgufydrteswa3esdrtgyhumij-lk-.-kmonjhbuestwa3q
     ```env
     FLASK_APP=run.py
     SECRET_KEY=ВАШ_СУПЕР_СЕКРЕТНЫЙ_КЛЮЧ_ЗДЕСЬ
+    IMAGE_GEN_API_KEY=API_КЛЮЧ
+    GIGACHAT_CREDENTIALS=API_КЛЮЧ
     ```
 
 5.  **Создайте и настройте базу данных:**

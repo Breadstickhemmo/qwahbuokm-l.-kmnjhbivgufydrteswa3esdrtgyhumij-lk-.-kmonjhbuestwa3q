@@ -45,7 +45,11 @@ def parse_slides_from_text(input_text):
 def generate_image_url(prompt: str) -> str:
     api_key = current_app.config.get("IMAGE_GEN_API_KEY")
     base_url = "https://api.kie.ai"
-    headers = {"Authorization": f"Bearer {api_key}"}
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
     
     try:
         gen_resp = requests.post(
@@ -115,7 +119,7 @@ def generate_ai_presentation():
                 "Презентация должна иметь логическую структуру: введение, несколько слайдов с основной информацией и заключение. "
                 "Для каждого слайда предоставь: 'Название слайда', 'Текст слайда' и 'Картинка слайда' (это должен быть короткий, емкий промпт на русском языке для нейросети, которая будет рисовать изображение). "
                 "Ответ должен быть в строгом формате, без лишних слов. Перед каждым слайдом обязательно пиши 'Слайд x'."
-                "Тебе запрещено использовать MarkDown разметку"
+                "Запрещаю использовать Markdown разметку. "
             )
             full_prompt = f"{system_prompt}\nТема презентации: {user_prompt}"
             
@@ -160,7 +164,6 @@ def generate_ai_presentation():
         return jsonify({'id': new_presentation.id}), 201
 
     except Exception as e:
-        print(f"Critical error during AI presentation generation: {e}")
         import traceback
         traceback.print_exc()
         db.session.rollback()
