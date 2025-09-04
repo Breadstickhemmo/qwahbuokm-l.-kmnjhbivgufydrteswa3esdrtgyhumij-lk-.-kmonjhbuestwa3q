@@ -10,6 +10,8 @@ from pptx.util import Inches, Pt
 import uuid
 from PIL import Image
 import ffmpeg
+import win32com.client
+import pythoncom
 from ..models import User, Presentation, Slide, SlideElement
 from ..extensions import db
 
@@ -34,17 +36,14 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
-@presentations_bp.route('/presentations/<string:presentation_id>/download', methods=['GET'])
-@token_required
-def download_presentation(presentation_id):
-    presentation = Presentation.query.get_or_404(presentation_id)
-    if presentation.user_id != g.current_user.id: return jsonify({'message': 'Доступ запрещен'}), 403
+def _create_pptx_from_data(presentation_id):
+    presentation_data = Presentation.query.get_or_404(presentation_id)
     
     prs = PptxPresentation()
     prs.slide_width = Inches(16)
     prs.slide_height = Inches(9)
     
-    slides = Slide.query.filter_by(presentation_id=presentation.id).order_by(Slide.slide_number).all()
+    slides = Slide.query.filter_by(presentation_id=presentation_data.id).order_by(Slide.slide_number).all()
 
     for slide_data in slides:
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -66,41 +65,28 @@ def download_presentation(presentation_id):
                 try:
                     filename = element.content.split('/')[-1]
                     image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                    
-                    if not os.path.exists(image_path):
-                        continue
-
+                    if not os.path.exists(image_path): continue
                     with Image.open(image_path) as img:
                         img_width, img_height = img.size
-
                     container_aspect = container_width / container_height
                     img_aspect = img_width / img_height
-
                     if img_aspect > container_aspect:
                         new_width = container_width
                         new_height = new_width / img_aspect
                     else:
                         new_height = container_height
                         new_width = new_height * img_aspect
-
                     left_offset = (container_width - new_width) / 2
                     top_offset = (container_height - new_height) / 2
-                    
                     final_left = container_left + left_offset
                     final_top = container_top + top_offset
-
                     slide.shapes.add_picture(image_path, final_left, final_top, width=new_width, height=new_height)
-
                 except Exception as e:
                     print(f"Could not add image {element.content}: {e}")
 
             elif element.element_type == 'YOUTUBE_VIDEO' and element.content:
                 image_stream = None
-                thumbnail_urls = [
-                    f"https://img.youtube.com/vi/{element.content}/maxresdefault.jpg",
-                    f"https://img.youtube.com/vi/{element.content}/hqdefault.jpg",
-                    f"https://img.youtube.com/vi/{element.content}/0.jpg"
-                ]
+                thumbnail_urls = [f"https://img.youtube.com/vi/{element.content}/maxresdefault.jpg", f"https://img.youtube.com/vi/{element.content}/hqdefault.jpg", f"https://img.youtube.com/vi/{element.content}/0.jpg"]
                 for url in thumbnail_urls:
                     try:
                         response = requests.get(url, stream=True)
@@ -110,7 +96,6 @@ def download_presentation(presentation_id):
                     except requests.exceptions.RequestException as e:
                         print(f"Could not fetch thumbnail {url}: {e}")
                         continue
-                
                 if image_stream:
                     try:
                         pic = slide.shapes.add_picture(image_stream, container_left, container_top, width=container_width, height=container_height)
@@ -124,31 +109,79 @@ def download_presentation(presentation_id):
                     filename = element.content.split('/')[-1]
                     video_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
                     poster_path = os.path.join(current_app.root_path, 'static', 'video_poster.png')
-                    
-                    video_exists = os.path.exists(video_path)
-                    poster_exists = os.path.exists(poster_path)
-
-                    if video_exists and poster_exists:
-                        MIME_TYPES = { '.mp4': 'video/mp4', '.webm': 'video/webm' }
+                    if os.path.exists(video_path) and os.path.exists(poster_path):
+                        MIME_TYPES = {'.mp4': 'video/mp4', '.webm': 'video/webm'}
                         _root, extension = os.path.splitext(filename)
                         mime_type = MIME_TYPES.get(extension.lower(), 'video/mp4')
-
-                        slide.shapes.add_movie(
-                            video_path, 
-                            container_left, container_top, container_width, container_height,
-                            poster_frame_image=poster_path,
-                            mime_type=mime_type
-                        )
-                    else:
-                        if not video_exists: print(f"WARNING: Video file not found at {video_path}")
-                        if not poster_exists: print(f"WARNING: Poster frame not found at {poster_path}. UPLOADED_VIDEO will not be added.")
+                        slide.shapes.add_movie(video_path, container_left, container_top, container_width, container_height, poster_frame_image=poster_path, mime_type=mime_type)
                 except Exception as e:
                     print(f"Could not add uploaded video {element.content}: {e}")
+    return prs, presentation_data.title
 
+@presentations_bp.route('/presentations/<string:presentation_id>/download/pptx', methods=['GET'])
+@token_required
+def download_presentation_pptx(presentation_id):
+    presentation = Presentation.query.get_or_404(presentation_id)
+    if presentation.user_id != g.current_user.id: return jsonify({'message': 'Доступ запрещен'}), 403
+    
+    prs, title = _create_pptx_from_data(presentation_id)
+    
     file_stream = io.BytesIO()
     prs.save(file_stream)
     file_stream.seek(0)
-    return send_file(file_stream, as_attachment=True, download_name=f"{presentation.title}.pptx", mimetype='application/vnd.openxmlformats-officedocument-presentationml-presentation')
+    return send_file(file_stream, as_attachment=True, download_name=f"{title}.pptx", mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation')
+
+@presentations_bp.route('/presentations/<string:presentation_id>/download/pdf', methods=['GET'])
+@token_required
+def download_presentation_pdf(presentation_id):
+    presentation = Presentation.query.get_or_404(presentation_id)
+    if presentation.user_id != g.current_user.id:
+        return jsonify({'message': 'Доступ запрещен'}), 403
+
+    prs, title = _create_pptx_from_data(presentation_id)
+    
+    instance_path = current_app.instance_path
+    os.makedirs(instance_path, exist_ok=True)
+    
+    pptx_filename = f"{uuid.uuid4()}.pptx"
+    pdf_filename = f"{uuid.uuid4()}.pdf"
+    
+    pptx_path = os.path.join(instance_path, pptx_filename)
+    pdf_path = os.path.join(instance_path, pdf_filename)
+    
+    powerpoint = None
+    pres = None
+    pdf_stream = None
+
+    try:
+        prs.save(pptx_path)
+
+        pythoncom.CoInitializeEx(0)
+        powerpoint = win32com.client.Dispatch("PowerPoint.Application")
+        pres = powerpoint.Presentations.Open(pptx_path, WithWindow=False)
+        
+        pres.SaveAs(pdf_path, 32)
+        print(f"Successfully converted {pptx_path} to {pdf_path}")
+
+        with open(pdf_path, 'rb') as f:
+            pdf_stream = io.BytesIO(f.read())
+        
+        pdf_stream.seek(0)
+        return send_file(pdf_stream, as_attachment=True, download_name=f"{title}.pdf", mimetype='application/pdf')
+
+    except Exception as e:
+        print(f"Failed to convert to PDF: {e}")
+        return jsonify({"message": "Ошибка при конвертации в PDF. Убедитесь, что MS PowerPoint установлен на сервере."}), 500
+    
+    finally:
+        if pres:
+            pres.Close()
+        if powerpoint:
+            powerpoint.Quit()
+        if os.path.exists(pptx_path):
+            os.remove(pptx_path)
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
 
 @presentations_bp.route('/presentations', methods=['POST'])
 @token_required
@@ -299,7 +332,6 @@ def upload_image():
     if file:
         _root, extension = os.path.splitext(file.filename)
         filename = f"{uuid.uuid4()}{extension}"
-        
         os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         file.save(save_path)
@@ -314,34 +346,21 @@ def upload_video():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'message': 'Файл не выбран'}), 400
-
     if file:
         _root, extension = os.path.splitext(file.filename)
-        
         temp_filename = f"{uuid.uuid4()}{extension}"
         final_filename = f"{uuid.uuid4()}.mp4"
-
         temp_path = os.path.join(current_app.config['UPLOAD_FOLDER'], temp_filename)
         final_path = os.path.join(current_app.config['UPLOAD_FOLDER'], final_filename)
-
         os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
         file.save(temp_path)
-
         try:
             print(f"Starting conversion from {temp_path} to {final_path}")
-            ffmpeg.input(temp_path).output(
-                final_path, 
-                vcodec='libx264',
-                acodec='aac',
-                strict='experimental'
-            ).run(capture_stdout=True, capture_stderr=True)
+            ffmpeg.input(temp_path).output(final_path, vcodec='libx264', acodec='aac', strict='experimental').run(capture_stdout=True, capture_stderr=True)
             print("Conversion successful")
-            
             os.remove(temp_path)
-            
             file_url = url_for('static', filename=f'uploads/{final_filename}', _external=True)
             return jsonify({'url': file_url}), 200
-
         except ffmpeg.Error as e:
             os.remove(temp_path)
             print("FFmpeg Error:")

@@ -7,16 +7,17 @@ interface SlideEditorProps {
   slide: Slide | null;
   scale: number;
   selectedElementIds: string[];
+  draftPositions: Record<string, { x: number, y: number }>;
   onSelectElement: (id: string | null, event?: React.MouseEvent) => void;
   onUpdateElement: (id: string, data: Partial<SlideElement>) => void;
   onMouseDown: (event: React.MouseEvent) => void;
   onDragStart: (id: string) => void;
   onDrag: (id: string, newPosition: { x: number, y: number }) => void;
-  onDragStop: (id: string, finalPos: { x: number, y: number }) => void;
+  onDragStop: () => void;
 }
 
 export const SlideEditor = React.forwardRef<HTMLDivElement, SlideEditorProps>(({ 
-    slide, scale, selectedElementIds, onSelectElement, onUpdateElement,
+    slide, scale, selectedElementIds, draftPositions, onSelectElement, onUpdateElement,
     onMouseDown, onDragStart, onDrag, onDragStop
 }, ref) => {
   if (!slide) {
@@ -41,19 +42,26 @@ export const SlideEditor = React.forwardRef<HTMLDivElement, SlideEditorProps>(({
         userSelect: 'none'
       }}
     >
-      {slide.elements.map(element => (
-        <EditableElement 
-          key={element.id} 
-          element={element}
-          scale={scale}
-          isSelected={selectedElementIds.includes(element.id)}
-          onSelect={onSelectElement}
-          onUpdate={onUpdateElement}
-          onDragStart={onDragStart}
-          onDrag={onDrag}
-          onDragStop={onDragStop}
-        />
-      ))}
+      {slide.elements.map(element => {
+        const draftPosition = draftPositions[element.id];
+        const finalElement = draftPosition 
+          ? { ...element, pos_x: draftPosition.x, pos_y: draftPosition.y } 
+          : element;
+
+        return (
+          <EditableElement 
+            key={element.id} 
+            element={finalElement}
+            scale={scale}
+            isSelected={selectedElementIds.includes(element.id)}
+            onSelect={onSelectElement}
+            onUpdate={onUpdateElement}
+            onDragStart={onDragStart}
+            onDrag={onDrag}
+            onDragStop={onDragStop}
+          />
+        );
+      })}
     </Paper>
   );
 });

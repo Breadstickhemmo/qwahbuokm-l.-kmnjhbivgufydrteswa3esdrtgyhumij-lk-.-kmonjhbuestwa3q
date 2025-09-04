@@ -50,7 +50,9 @@ export const EditorPage = () => {
   const [isDrawingSelection, setIsDrawingSelection] = useState(false);
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  
   const [dragStartPositions, setDragStartPositions] = useState<Record<string, {x: number, y: number}>>({});
+  const [draftPositions, setDraftPositions] = useState<Record<string, {x: number, y: number}>>({});
 
   const handleSelectElement = useCallback((elementId: string | null, event?: React.MouseEvent) => {
     if (event?.shiftKey && elementId) {
@@ -200,6 +202,7 @@ export const EditorPage = () => {
         }
     });
     setDragStartPositions(positions);
+    setDraftPositions(positions);
   };
 
   const handleDrag = (draggedElementId: string, newPosition: { x: number, y: number }) => {
@@ -209,34 +212,31 @@ export const EditorPage = () => {
     const totalDeltaX = newPosition.x - startPos.x;
     const totalDeltaY = newPosition.y - startPos.y;
 
-    const updatedPositions: Record<string, Partial<SlideElement>> = {};
-    
+    const newDraftPositions: Record<string, {x: number, y: number}> = {};
     Object.keys(dragStartPositions).forEach(id => {
-        updatedPositions[id] = {
-            pos_x: dragStartPositions[id].x + totalDeltaX,
-            pos_y: dragStartPositions[id].y + totalDeltaY
+        newDraftPositions[id] = {
+            x: dragStartPositions[id].x + totalDeltaX,
+            y: dragStartPositions[id].y + totalDeltaY
         };
     });
-
-    handleUpdateMultipleElements(updatedPositions, false);
+    setDraftPositions(newDraftPositions);
   };
 
-  const handleDragStop = (elementId: string, finalPos: {x: number, y: number}) => {
-    const startPos = dragStartPositions[elementId];
-    if (!startPos) return;
+  const handleDragStop = () => {
+    if (Object.keys(draftPositions).length === 0) return;
 
-    const deltaX = finalPos.x - startPos.x;
-    const deltaY = finalPos.y - startPos.y;
-
-    const updatedPositions: Record<string, Partial<SlideElement>> = {};
-    Object.keys(dragStartPositions).forEach(id => {
-        updatedPositions[id] = {
-            pos_x: dragStartPositions[id].x + deltaX,
-            pos_y: dragStartPositions[id].y + deltaY
+    const updatesToSave: Record<string, Partial<SlideElement>> = {};
+    Object.keys(draftPositions).forEach(id => {
+        updatesToSave[id] = {
+            pos_x: draftPositions[id].x,
+            pos_y: draftPositions[id].y
         };
     });
-    handleUpdateMultipleElements(updatedPositions, true);
+    
+    handleUpdateMultipleElements(updatesToSave, true);
+    
     setDragStartPositions({});
+    setDraftPositions({});
   };
 
   useLayoutEffect(() => {
@@ -290,6 +290,7 @@ export const EditorPage = () => {
                 slide={activeSlide}
                 scale={scale}
                 selectedElementIds={selectedElementIds}
+                draftPositions={draftPositions}
                 onSelectElement={handleSelectElement}
                 onUpdateElement={handleUpdateElement}
                 onMouseDown={handleMouseDown}

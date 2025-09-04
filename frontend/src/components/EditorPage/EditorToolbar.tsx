@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
-import { AppBar, Toolbar, Typography, Tooltip, IconButton, ButtonGroup } from '@mui/material';
+import { AppBar, Toolbar, Typography, Tooltip, IconButton, ButtonGroup, Divider } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import ImageIcon from '@mui/icons-material/Image';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiService';
 import { useNotification } from '../../context/NotificationContext';
@@ -23,21 +24,31 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ title, presentatio
   const { showNotification } = useNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDownload = () => {
-    const url = `http://127.0.0.1:5000/api/presentations/${presentationId}/download`;
+  const handleDownload = (format: 'pptx' | 'pdf') => {
+    const url = `http://127.0.0.1:5000/api/presentations/${presentationId}/download/${format}`;
+    const filename = `${title}.${format}`;
+
     fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => res.blob())
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(err => { throw new Error(err.message || `Ошибка ${res.status}`) });
+        }
+        return res.blob();
+    })
     .then(blob => {
       const href = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = href;
-      link.setAttribute('download', `${title}.pptx`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(href);
+    })
+    .catch(error => {
+        showNotification(`Не удалось скачать файл: ${error.message}`, 'error');
     });
   };
 
@@ -79,8 +90,12 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ title, presentatio
           </Tooltip>
         </ButtonGroup>
 
+        <Divider orientation="vertical" flexItem sx={{ mr: 1, ml: 1 }} />
+
         <Tooltip title="Переименовать"><IconButton onClick={onRenameClick}><EditIcon /></IconButton></Tooltip>
-        <Tooltip title="Скачать (.pptx)"><IconButton onClick={handleDownload}><DownloadIcon /></IconButton></Tooltip>
+        
+        <Tooltip title="Скачать .pptx"><IconButton onClick={() => handleDownload('pptx')}><DownloadIcon /></IconButton></Tooltip>
+        <Tooltip title="Скачать .pdf"><IconButton onClick={() => handleDownload('pdf')}><PictureAsPdfIcon /></IconButton></Tooltip>
       </Toolbar>
       <input
         type="file"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Rnd, RndDragCallback, RndResizeCallback } from 'react-rnd';
-import { Box } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 import TextareaAutosize from 'react-textarea-autosize';
 import { SlideElement } from '../../hooks/usePresentation';
 
@@ -12,13 +12,14 @@ interface EditableElementProps {
   onUpdate: (id: string, data: Partial<SlideElement>) => void;
   onDragStart: (id: string) => void;
   onDrag: (id: string, newPosition: { x: number, y: number }) => void;
-  onDragStop: (id: string, finalPos: { x: number, y: number }) => void;
+  onDragStop: () => void;
 }
 
 export const EditableElement: React.FC<EditableElementProps> = ({ 
     element, scale, isSelected, onSelect, onUpdate,
     onDragStart, onDrag, onDragStop
 }) => {
+  const theme = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(element.content || '');
 
@@ -64,7 +65,7 @@ export const EditableElement: React.FC<EditableElementProps> = ({
   };
   
   const handleDragStop: RndDragCallback = (e, d) => {
-    onDragStop(element.id, { x: d.x, y: d.y });
+    onDragStop();
   };
   
   const onResizeStop: RndResizeCallback = (e, direction, ref, delta, position) => {
@@ -123,6 +124,14 @@ export const EditableElement: React.FC<EditableElementProps> = ({
     }
   };
 
+  const resizeHandleStyle = {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    backgroundColor: 'white',
+    border: `1px solid ${theme.palette.primary.main}`,
+  } as React.CSSProperties;
+
   return (
     <Rnd
       scale={scale}
@@ -151,14 +160,14 @@ export const EditableElement: React.FC<EditableElementProps> = ({
         topRight: isSelected,
       }}
       resizeHandleComponent={{
-          bottom: <div style={{position: 'absolute', bottom: -4, left: '50%', transform: 'translateX(-50%)', width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'ns-resize'}} />,
-          bottomLeft: <div style={{position: 'absolute', bottom: -4, left: -4, width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'nesw-resize'}} />,
-          bottomRight: <div style={{position: 'absolute', bottom: -4, right: -4, width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'nwse-resize'}} />,
-          left: <div style={{position: 'absolute', top: '50%', left: -4, transform: 'translateY(-50%)', width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'ew-resize'}} />,
-          right: <div style={{position: 'absolute', top: '50%', right: -4, transform: 'translateY(-50%)', width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'ew-resize'}} />,
-          top: <div style={{position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)', width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'ns-resize'}} />,
-          topLeft: <div style={{position: 'absolute', top: -4, left: -4, width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'nwse-resize'}} />,
-          topRight: <div style={{position: 'absolute', top: -4, right: -4, width: 8, height: 8, backgroundColor: 'white', border: '1px solid #1976d2', cursor: 'nesw-resize'}} />,
+          bottom: <div style={{...resizeHandleStyle, bottom: -4, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize'}} />,
+          bottomLeft: <div style={{...resizeHandleStyle, bottom: -4, left: -4, cursor: 'nesw-resize'}} />,
+          bottomRight: <div style={{...resizeHandleStyle, bottom: -4, right: -4, cursor: 'nwse-resize'}} />,
+          left: <div style={{...resizeHandleStyle, top: '50%', left: -4, transform: 'translateY(-50%)', cursor: 'ew-resize'}} />,
+          right: <div style={{...resizeHandleStyle, top: '50%', right: -4, transform: 'translateY(-50%)', cursor: 'ew-resize'}} />,
+          top: <div style={{...resizeHandleStyle, top: -4, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize'}} />,
+          topLeft: <div style={{...resizeHandleStyle, top: -4, left: -4, cursor: 'nwse-resize'}} />,
+          topRight: <div style={{...resizeHandleStyle, top: -4, right: -4, cursor: 'nesw-resize'}} />,
       }}
     >
       <Box
