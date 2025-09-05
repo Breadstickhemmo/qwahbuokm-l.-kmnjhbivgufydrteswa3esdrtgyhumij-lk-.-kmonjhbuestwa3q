@@ -5,6 +5,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import ImageIcon from '@mui/icons-material/Image';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import AudioFileIcon from '@mui/icons-material/AudioFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PaletteIcon from '@mui/icons-material/Palette';
@@ -31,7 +32,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 }) => {
   const { token } = useAuth();
   const { showNotification } = useNotification();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownload = (format: 'pptx' | 'pdf') => {
     const url = `http://127.0.0.1:5000/api/presentations/${presentationId}/download/${format}`;
@@ -77,10 +79,32 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       showNotification('Не удалось загрузить изображение', 'error');
     }
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (imageFileInputRef.current) {
+      imageFileInputRef.current.value = '';
     }
   };
+
+  const handleAudioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await apiClient.post('/upload/audio', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onAddElement('AUDIO', response.data.url);
+    } catch (error) {
+      showNotification('Не удалось загрузить аудио', 'error');
+    }
+
+    if (audioFileInputRef.current) {
+      audioFileInputRef.current.value = '';
+    }
+  };
+
 
   return (
     <AppBar position="static" color="default" elevation={1}>
@@ -92,10 +116,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <IconButton onClick={() => onAddElement('TEXT')}><TextFieldsIcon /></IconButton>
           </Tooltip>
           <Tooltip title="Добавить изображение">
-            <IconButton onClick={() => fileInputRef.current?.click()}><ImageIcon /></IconButton>
+            <IconButton onClick={() => imageFileInputRef.current?.click()}><ImageIcon /></IconButton>
           </Tooltip>
           <Tooltip title="Добавить видео">
             <IconButton onClick={onAddVideoClick}><VideoLibraryIcon /></IconButton>
+          </Tooltip>
+           <Tooltip title="Добавить аудио">
+            <IconButton onClick={() => audioFileInputRef.current?.click()}><AudioFileIcon /></IconButton>
           </Tooltip>
         </ButtonGroup>
 
@@ -119,9 +146,16 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       </Toolbar>
       <input
         type="file"
-        ref={fileInputRef}
+        ref={imageFileInputRef}
         onChange={handleImageUpload}
         accept="image/png, image/jpeg, image/gif"
+        style={{ display: 'none' }}
+      />
+      <input
+        type="file"
+        ref={audioFileInputRef}
+        onChange={handleAudioUpload}
+        accept="audio/mpeg, audio/wav, audio/ogg"
         style={{ display: 'none' }}
       />
     </AppBar>

@@ -3,6 +3,7 @@ import { Rnd, RndDragCallback, RndResizeCallback } from 'react-rnd';
 import { Box, useTheme } from '@mui/material';
 import TextareaAutosize from 'react-textarea-autosize';
 import { SlideElement } from '../../hooks/usePresentation';
+import apiClient from '../../services/apiService';
 
 interface EditableElementProps {
   element: SlideElement;
@@ -14,6 +15,8 @@ interface EditableElementProps {
   onDrag: (id: string, newPosition: { x: number, y: number }) => void;
   onDragStop: () => void;
 }
+
+const API_BASE_URL = apiClient.defaults.baseURL?.replace('/api', '');
 
 export const EditableElement: React.FC<EditableElementProps> = ({ 
     element, scale, isSelected, onSelect, onUpdate,
@@ -86,14 +89,17 @@ export const EditableElement: React.FC<EditableElementProps> = ({
           <Box sx={textStyle}>{element.content}</Box>
         );
       case 'IMAGE':
-        return element.content ? (
-          <img 
-            src={element.content} 
-            alt="slide element" 
+        if (!element.content) return null;
+        const isExternalUrl = element.content.startsWith('http');
+        const src = isExternalUrl ? element.content : `${API_BASE_URL}${element.content}`;
+        return (
+          <img
+            src={src}
+            alt="slide element"
             style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
             onDragStart={(e) => e.preventDefault()}
           />
-        ) : null;
+        );
       case 'YOUTUBE_VIDEO':
         const videoId = element.content;
         const embedSrc = `https://www.youtube.com/embed/${videoId}`;
@@ -110,15 +116,29 @@ export const EditableElement: React.FC<EditableElementProps> = ({
             ></iframe>
         );
       case 'UPLOADED_VIDEO':
-        return element.content ? (
+        if (!element.content) return null;
+        const isExternalUrlVideo = element.content.startsWith('http');
+        const srcVideo = isExternalUrlVideo ? element.content : `${API_BASE_URL}${element.content}`;
+        return (
             <video
-                src={element.content}
+                src={srcVideo}
                 width="100%"
                 height="100%"
                 controls
                 style={{ objectFit: 'contain', pointerEvents: isSelected ? 'none' : 'auto' }}
             />
-        ) : null;
+        );
+      case 'AUDIO':
+        if (!element.content) return null;
+        const isExternalUrlAudio = element.content.startsWith('http');
+        const srcAudio = isExternalUrlAudio ? element.content : `${API_BASE_URL}${element.content}`;
+        return (
+            <audio
+                src={srcAudio}
+                controls
+                style={{ width: '100%', height: '100%', pointerEvents: isSelected ? 'none' : 'auto' }}
+            />
+        );
       default:
         return null;
     }

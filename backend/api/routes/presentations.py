@@ -12,15 +12,19 @@ import win32com.client
 import pythoncom
 from ..models import Presentation, Slide
 from ..extensions import db
+from pptx.dml.color import RGBColor
 
 presentations_bp = Blueprint('presentations', __name__)
 
 PIXELS_PER_INCH = 80.0
+SERVER_BASE_URL = 'http://127.0.0.1:5000'
 
 def px_to_inches(px):
     return px / PIXELS_PER_INCH
 
 def _download_image_from_url(image_url):
+    if image_url.startswith('/'):
+        image_url = f"{SERVER_BASE_URL}{image_url}"
     try:
         response = requests.get(image_url, stream=True, timeout=30)
         response.raise_for_status()
@@ -42,6 +46,40 @@ def _create_pptx_from_data(presentation_id):
 
     for slide_data in slides:
         slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        if slide_data.background_image:
+            try:
+                print(f"Слайд {slide_data.slide_number}: пытаюсь применить картинку {slide_data.background_image}")
+                
+                image_stream = _download_image_from_url(slide_data.background_image)
+                if image_stream:
+                    pic = slide.shapes.add_picture(
+                        image_stream, 
+                        Inches(0), Inches(0), 
+                        width=prs.slide_width, 
+                        height=prs.slide_height
+                    )
+                    
+                    slide.shapes._spTree.insert(2, pic._element)
+
+            except Exception as e:
+                print(f"Не удалось добавить фон-картинку {slide_data.background_image}: {e}")
+
+        elif slide_data.background_color:
+            try:
+                print(f"Слайд {slide_data.slide_number}: пытаюсь применить цвет {slide_data.background_color}")
+
+                hex_color = slide_data.background_color.lstrip('#')
+                if len(hex_color) == 6:
+                    r = int(hex_color[0:2], 16)
+                    g = int(hex_color[2:4], 16)
+                    b = int(hex_color[4:6], 16)
+                    
+                    slide.background.fill.solid()
+                    slide.background.fill.fore_color.rgb = RGBColor(r, g, b)
+            except Exception as e:
+                print(f"Не удалось установить цвет фона {slide_data.background_color}: {e}")
+
         for element in slide_data.elements:
             container_left = Inches(px_to_inches(element.pos_x))
             container_top = Inches(px_to_inches(element.pos_y))
@@ -67,8 +105,8 @@ def _create_pptx_from_data(presentation_id):
                     
                     image_stream.seek(0)
                     
-                    container_aspect = container_width / container_height
-                    img_aspect = img_width / img_height
+                    container_aspect = container_width.emu / container_height.emu if container_height.emu > 0 else 1
+                    img_aspect = img_width / img_height if img_height > 0 else 1
                     
                     if img_aspect > container_aspect:
                         new_width = container_width
@@ -94,15 +132,10 @@ def _create_pptx_from_data(presentation_id):
                     f"https://img.youtube.com/vi/{element.content}/hqdefault.jpg", 
                     f"https://img.youtube.com/vi/{element.content}/0.jpg"
                 ]
-                
                 for url in thumbnail_urls:
-                    try:
-                        image_stream = _download_image_from_url(url)
-                        if image_stream:
-                            break
-                    except Exception as e:
-                        print(f"Не удалось загрузить эскиз {url}: {e}")
-                        continue
+                    image_stream = _download_image_from_url(url)
+                    if image_stream:
+                        break
                 
                 if image_stream:
                     try:
@@ -112,23 +145,31 @@ def _create_pptx_from_data(presentation_id):
                     except Exception as e:
                         print(f"Не удалось добавить эскиз видео для {element.content}: {e}")
             
-            elif element.element_type == 'UPLOADED_VIDEO' and element.content:
+            elif (element.element_type == 'UPLOADED_VIDEO' or element.element_type == 'AUDIO') and element.content:
                 try:
-                    if element.content.startswith(('http://', 'https://')):
-                        video_thumbnail = _download_image_from_url(element.content)
-                        if video_thumbnail:
-                            slide.shapes.add_picture(video_thumbnail, container_left, container_top, width=container_width, height=container_height)
-                    else:
-                        filename = element.content.split('/')[-1]
-                        video_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    filename = element.content.split('/')[-1]
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    
+                    if element.element_type == 'UPLOADED_VIDEO':
                         poster_path = os.path.join(current_app.root_path, 'static', 'video_poster.png')
-                        if os.path.exists(video_path) and os.path.exists(poster_path):
-                            MIME_TYPES = {'.mp4': 'video/mp4', '.webm': 'video/webm'}
-                            _root, extension = os.path.splitext(filename)
-                            mime_type = MIME_TYPES.get(extension.lower(), 'video/mp4')
-                            slide.shapes.add_movie(video_path, container_left, container_top, container_width, container_height, poster_frame_image=poster_path, mime_type=mime_type)
+                        mime_type = 'video/mp4'
+                    else:
+                        poster_path = os.path.join(current_app.root_path, 'static', 'audio_poster.png')
+                        mime_type = 'audio/mpeg'
+
+                    if os.path.exists(file_path) and os.path.exists(poster_path):
+                        slide.shapes.add_movie(
+                            file_path, container_left, container_top, 
+                            container_width, container_height, 
+                            poster_frame_image=poster_path, mime_type=mime_type
+                        )
+                    else:
+                        if not os.path.exists(file_path):
+                            print(f"Файл не найден для экспорта: {file_path}")
+                        if not os.path.exists(poster_path):
+                            print(f"Файл-заглушка (poster) не найден: {poster_path}")
                 except Exception as e:
-                    print(f"Не удалось добавить загруженное видео {element.content}: {e}")
+                    print(f"Не удалось добавить медиафайл {element.content}: {e}")
     
     return prs, presentation_data.title
 
@@ -330,13 +371,30 @@ def upload_video():
         file.save(temp_path)
         try:
             print(f"Starting conversion from {temp_path} to {final_path}")
-            ffmpeg.input(temp_path).output(final_path, vcodec='libx264', acodec='aac', strict='experimental').run(capture_stdout=True, capture_stderr=True)
+            ffmpeg.input(temp_path).output(final_path, vcodec='libx24', acodec='aac', strict='experimental').run(capture_stdout=True, capture_stderr=True)
             print("Conversion successful")
             os.remove(temp_path)
-            file_url = url_for('static', filename=f'uploads/{final_filename}', _external=True)
+            file_url = url_for('static', filename=f'uploads/{final_filename}', _external=False)
             return jsonify({'url': file_url}), 200
         except ffmpeg.Error as e:
             os.remove(temp_path)
             print("FFmpeg Error:")
             print(e.stderr.decode())
             return jsonify({'message': 'Не удалось обработать видеофайл'}), 500
+
+@presentations_bp.route('/upload/audio', methods=['POST'])
+@token_required
+def upload_audio():
+    if 'file' not in request.files:
+        return jsonify({'message': 'Файл не найден'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'Файл не выбран'}), 400
+    if file:
+        _root, extension = os.path.splitext(file.filename)
+        filename = f"{uuid.uuid4()}{extension}"
+        os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
+        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        file.save(save_path)
+        file_url = url_for('static', filename=f'uploads/{filename}', _external=False)
+        return jsonify({'url': file_url}), 200

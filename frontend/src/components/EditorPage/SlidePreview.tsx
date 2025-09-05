@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Paper, Box, CircularProgress } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import { Slide, SlideElement } from '../../hooks/usePresentation';
 import apiClient from '../../services/apiService';
 
@@ -74,6 +75,13 @@ const ElementPreview: React.FC<{ element: SlideElement }> = ({ element }) => {
                         position: 'absolute', top: '50%', left: '50%', 
                         transform: 'translate(-50%, -50%)', fontSize: '4rem', color: 'white'
                     }} />
+                </Box>
+            );
+            break;
+        case 'AUDIO':
+            content = (
+                 <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.200', borderRadius: 1 }}>
+                    <MusicNoteIcon sx={{ fontSize: '2.5rem', color: 'text.secondary' }} />
                 </Box>
             );
             break;

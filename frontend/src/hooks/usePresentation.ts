@@ -5,7 +5,7 @@ import { useDebounce } from './useDebounce';
 
 export interface SlideElement {
   id: string;
-  element_type: 'TEXT' | 'IMAGE' | 'YOUTUBE_VIDEO' | 'UPLOADED_VIDEO';
+  element_type: 'TEXT' | 'IMAGE' | 'YOUTUBE_VIDEO' | 'UPLOADED_VIDEO' | 'AUDIO';
   pos_x: number;
   pos_y: number;
   width: number;
@@ -203,7 +203,7 @@ export const usePresentation = (presentationId?: string) => {
     if (!activeSlide) return;
   
     let newElementData;
-    const defaultSize = { width: 400, height: 225 };
+    const defaultImageSize = { width: 400, height: 225 };
 
     switch (type) {
       case 'TEXT':
@@ -212,7 +212,10 @@ export const usePresentation = (presentationId?: string) => {
       case 'IMAGE':
       case 'YOUTUBE_VIDEO':
       case 'UPLOADED_VIDEO':
-        newElementData = { element_type: type, content: content, ...defaultSize };
+        newElementData = { element_type: type, content: content, ...defaultImageSize };
+        break;
+      case 'AUDIO':
+        newElementData = { element_type: type, content: content, width: 300, height: 50 };
         break;
       default:
         return;
