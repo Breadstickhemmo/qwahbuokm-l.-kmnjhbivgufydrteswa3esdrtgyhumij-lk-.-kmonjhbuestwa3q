@@ -325,7 +325,14 @@ export const EditorPage = () => {
               )}
             </Box>
           </Box>
-          {activePanel === 'ai' && <AiChatPanel />}
+          {activePanel === 'ai' && 
+            <AiChatPanel
+                activeSlide={activeSlide}
+                selectedElementIds={selectedElementIds}
+                onUpdateElement={handleUpdateElement}
+                onAddElement={handleAddElement}
+            />
+          }
           {activePanel === 'background' && 
             <BackgroundPanel 
               activeSlide={activeSlide}

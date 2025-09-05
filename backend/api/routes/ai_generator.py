@@ -77,7 +77,6 @@ class FusionBrainAPI:
         return None
 
     def save_image(self, image_data: str, filename: str = "generated_image"):
-        """Сохраняет изображение из base64"""
         if not filename.endswith('.jpg'):
             filename += '.jpg'
         
@@ -92,17 +91,6 @@ class FusionBrainAPI:
 
 
 def upload_to_telegram(image_path, bot_token, chat_id):
-    """
-    Загружает изображение в Telegram и возвращает прямую ссылку
-    
-    Args:
-        image_path (str): Путь к файлу изображения
-        bot_token (str): Токен вашего Telegram бота
-        chat_id (str/int): ID чата для отправки
-    
-    Returns:
-        str: Прямая ссылка на изображение
-    """
     url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
     
     try:
@@ -258,13 +246,9 @@ def generate_ai_presentation():
             
             response = giga.chat(full_prompt)
             generated_text = response.choices[0].message.content
-            print("--- GigaChat Raw Response ---")
-            print(generated_text)
-            print("-----------------------------")
 
         slides_content = parse_slides_from_text(generated_text)
         if not slides_content or len(slides_content) < 2:
-            print(f"Failed to parse slides or got too few slides. Parsed data: {slides_content}")
             return jsonify({'message': 'Не удалось сгенерировать корректную структуру презентации. Попробуйте другую тему.'}), 500
 
         new_presentation = Presentation(title=user_prompt, owner=g.current_user)
@@ -272,9 +256,7 @@ def generate_ai_presentation():
         db.session.flush()
 
         for i, content in enumerate(slides_content):
-            print(f"Processing slide {i+1}. Image prompt: {content['image_prompt']}")
             image_url = generate_image_url(content['image_prompt'])
-
             new_slide = Slide(slide_number=i + 1, presentation_id=new_presentation.id)
             db.session.add(new_slide)
             db.session.flush()
@@ -288,7 +270,6 @@ def generate_ai_presentation():
                 db.session.add(text_element)
                 db.session.add(image_element)
             else:
-                print(f"No image generated for slide {i+1}. Using full-width text.")
                 text_element = SlideElement(slide_id=new_slide.id, element_type='TEXT', content=content['text'], pos_x=80, pos_y=200, width=1120, height=460, font_size=24)
                 db.session.add(text_element)
 
@@ -301,3 +282,67 @@ def generate_ai_presentation():
         traceback.print_exc()
         db.session.rollback()
         return jsonify({'message': 'Произошла критическая внутренняя ошибка сервера'}), 500
+
+@ai_bp.route('/ai/process-text', methods=['POST'])
+@token_required
+def process_text():
+    data = request.get_json()
+    text = data.get('text')
+    command = data.get('command')
+
+    if not text or not command:
+        return jsonify({'message': 'Требуются текст и команда'}), 400
+
+    try:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        with GigaChat(credentials=current_app.config.get("GIGACHAT_CREDENTIALS"), ssl_context=ssl_context) as giga:
+            system_prompt = f"Ты — редактор-помощник. Выполни следующую команду для текста: '{command}'. Ответь только измененным текстом, без лишних слов и форматирования."
+            full_prompt = f"{system_prompt}\n\nТекст для обработки:\n\"{text}\""
+            
+            response = giga.chat(full_prompt)
+            result_text = response.choices[0].message.content
+            return jsonify({'result': result_text})
+
+    except Exception as e:
+        print(f"GigaChat text processing error: {e}")
+        return jsonify({'message': 'Ошибка при обработке текста'}), 500
+
+@ai_bp.route('/ai/suggest-image', methods=['POST'])
+@token_required
+def suggest_image():
+    data = request.get_json()
+    slide_text = data.get('slide_text')
+    if not slide_text:
+        return jsonify({'message': 'Требуется текст слайда'}), 400
+
+    try:
+        image_prompt = ""
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        with GigaChat(credentials=current_app.config.get("GIGACHAT_CREDENTIALS"), ssl_context=ssl_context) as giga:
+            system_prompt = (
+                "На основе следующего текста со слайда презентации создай короткий, но детальный промпт на русском языке для нейросети, "
+                "которая будет рисовать изображение. Промпт должен быть в стиле 'яркая иллюстрация, ...'. "
+                "Ответь только самим промптом, без лишних слов."
+            )
+            full_prompt = f"{system_prompt}\n\nТекст со слайда:\n\"{slide_text}\""
+            response = giga.chat(full_prompt)
+            image_prompt = response.choices[0].message.content.strip()
+
+        if not image_prompt:
+             return jsonify({'message': 'Не удалось создать промпт для изображения'}), 500
+
+        image_url = generate_image_url(image_prompt)
+        if not image_url:
+            return jsonify({'message': 'Не удалось сгенерировать изображение'}), 500
+        
+        return jsonify({'image_url': image_url})
+
+    except Exception as e:
+        print(f"Image suggestion error: {e}")
+        return jsonify({'message': 'Ошибка при генерации изображения'}), 500
