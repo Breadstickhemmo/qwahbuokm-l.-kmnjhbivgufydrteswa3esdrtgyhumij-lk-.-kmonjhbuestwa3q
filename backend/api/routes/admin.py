@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app, g, url_for
 import os
 import uuid
-from ..models import Presentation, Slide
+from ..models import Presentation, Slide, User, SystemPrompt
 from ..extensions import db
 from .decorators import token_required, admin_required
 
@@ -87,3 +87,63 @@ def upload_template_preview(template_id):
     db.session.commit()
     
     return jsonify({'url': file_url}), 200
+
+@admin_bp.route('/admin/users', methods=['GET'])
+@token_required
+@admin_required
+def get_all_users():
+    users = User.query.order_by(User.id).all()
+    output = []
+    for user in users:
+        output.append({
+            'id': user.id,
+            'email': user.email,
+            'is_admin': user.is_admin,
+            'can_use_ai': user.can_use_ai
+        })
+    return jsonify(output)
+
+@admin_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
+@token_required
+@admin_required
+def update_user_access(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+
+    if 'can_use_ai' in data:
+        user.can_use_ai = data['can_use_ai']
+    
+    db.session.commit()
+    return jsonify({'message': f'Доступ для пользователя {user.email} обновлен'}), 200
+
+@admin_bp.route('/admin/prompts', methods=['GET'])
+@token_required
+@admin_required
+def get_all_prompts():
+    prompts = SystemPrompt.query.order_by(SystemPrompt.id).all()
+    output = []
+    for p in prompts:
+        output.append({
+            'id': p.id,
+            'name': p.name,
+            'description': p.description,
+            'prompt_text': p.prompt_text,
+            'is_active': p.is_active,
+            'updated_at': p.updated_at.isoformat()
+        })
+    return jsonify(output)
+
+@admin_bp.route('/admin/prompts/<int:prompt_id>', methods=['PUT'])
+@token_required
+@admin_required
+def update_prompt(prompt_id):
+    prompt = SystemPrompt.query.get_or_404(prompt_id)
+    data = request.get_json()
+
+    if 'prompt_text' in data:
+        prompt.prompt_text = data['prompt_text']
+    if 'is_active' in data:
+        prompt.is_active = data['is_active']
+    
+    db.session.commit()
+    return jsonify({'message': f'Промпт "{prompt.name}" обновлен'}), 200

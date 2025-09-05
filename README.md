@@ -152,6 +152,14 @@ cd qwahbuokm-l.-kmnjhbivgufydrteswa3esdrtgyhumij-lk-.-kmonjhbuestwa3q
     flask make-admin (почта пользователя)
     ```
 
+### 7. Загрузка промтов в базу данных
+
+Чтобы загрузить промты для админ панели на сайт в терминале необходимо написать
+
+    ```bash
+    flask seed-prompts
+    ```
+
 ## Команда "Re Hub TUSUR"
 
 *   Андрей Ковшов - Роль в команде - Team Lead, AI-разработчик

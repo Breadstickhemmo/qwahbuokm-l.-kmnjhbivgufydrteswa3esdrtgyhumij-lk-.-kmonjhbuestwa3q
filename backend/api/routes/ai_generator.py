@@ -6,7 +6,7 @@ import time
 import json
 import base64
 import os
-from ..models import Presentation, Slide, SlideElement
+from ..models import Presentation, Slide, SlideElement, SystemPrompt
 from ..extensions import db
 from .decorators import token_required
 
@@ -220,12 +220,28 @@ def parse_slides_from_text(input_text):
 @ai_bp.route('/presentations/generate-ai', methods=['POST'])
 @token_required
 def generate_ai_presentation():
+    if not g.current_user.can_use_ai:
+        return jsonify({'message': 'Доступ к функциям ИИ ограничен'}), 403
+
     data = request.get_json()
     user_prompt = data.get('prompt')
     if not user_prompt:
         return jsonify({'message': 'Промпт обязателен'}), 400
 
     try:
+        prompt_obj = SystemPrompt.query.filter_by(name='generate_presentation', is_active=True).first()
+        if prompt_obj:
+            system_prompt = prompt_obj.prompt_text
+        else:
+            system_prompt = (
+                "Ты - профессиональный дизайнер презентаций. Твоя задача — создать структуру для презентации на заданную тему. "
+                "Сгенерируй от 4 до 7 слайдов. "
+                "Презентация должна иметь логическую структуру: введение, несколько слайдов с основной информацией и заключение. "
+                "Для каждого слайда предоставь: 'Название слайда', 'Текст слайда' и 'Картинка слайда' (это должен быть короткий, емкий промпт на русском языке для нейросети, которая будет рисовать изображение). "
+                "Ответ должен быть в строгом формате, без лишних слов. Перед каждым слайдом обязательно пиши 'Слайд x'."
+                "Запрещаю использовать Markdown разметку. "
+            )
+
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
@@ -234,14 +250,6 @@ def generate_ai_presentation():
             credentials=current_app.config.get("GIGACHAT_CREDENTIALS"),
             ssl_context=ssl_context
         ) as giga:
-            system_prompt = (
-                "Ты - профессиональный дизайнер презентаций. Твоя задача — создать структуру для презентации на заданную тему. "
-                "Сгенерируй от 4 до 7 слайдов. "
-                "Презентация должна иметь логическую структуру: введение, несколько слайдов с основной информацией и заключение. "
-                "Для каждого слайда предоставь: 'Название слайда', 'Текст слайда' (то, что должно быть на слайде, примерно 6-7 предложений) и 'Картинка слайда' (это должен быть короткий, емкий промпт на русском языке для нейросети, которая будет рисовать изображение). "
-                "Ответ должен быть в строгом формате, без лишних слов. Перед каждым слайдом обязательно пиши 'Слайд x'."
-                "Запрещаю использовать Markdown разметку. "
-            )
             full_prompt = f"{system_prompt}\nТема презентации: {user_prompt}"
             
             response = giga.chat(full_prompt)
@@ -286,6 +294,9 @@ def generate_ai_presentation():
 @ai_bp.route('/ai/process-text', methods=['POST'])
 @token_required
 def process_text():
+    if not g.current_user.can_use_ai:
+        return jsonify({'message': 'Доступ к функциям ИИ ограничен'}), 403
+
     data = request.get_json()
     text = data.get('text')
     command = data.get('command')
@@ -294,13 +305,19 @@ def process_text():
         return jsonify({'message': 'Требуются текст и команда'}), 400
 
     try:
+        prompt_obj = SystemPrompt.query.filter_by(name='process_text', is_active=True).first()
+        if prompt_obj:
+            system_prompt = prompt_obj.prompt_text
+        else:
+            system_prompt = "Ты — редактор-помощник. Выполни следующую команду для текста: '{command}'. Ответь только измененным текстом, без лишних слов и форматирования."
+
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
         
         with GigaChat(credentials=current_app.config.get("GIGACHAT_CREDENTIALS"), ssl_context=ssl_context) as giga:
-            system_prompt = f"Ты — редактор-помощник. Выполни следующую команду для текста: '{command}'. Ответь только измененным текстом, без лишних слов и форматирования."
-            full_prompt = f"{system_prompt}\n\nТекст для обработки:\n\"{text}\""
+            final_system_prompt = system_prompt.replace('{command}', command)
+            full_prompt = f"{final_system_prompt}\n\nТекст для обработки:\n\"{text}\""
             
             response = giga.chat(full_prompt)
             result_text = response.choices[0].message.content
@@ -313,23 +330,31 @@ def process_text():
 @ai_bp.route('/ai/suggest-image', methods=['POST'])
 @token_required
 def suggest_image():
+    if not g.current_user.can_use_ai:
+        return jsonify({'message': 'Доступ к функциям ИИ ограничен'}), 403
+
     data = request.get_json()
     slide_text = data.get('slide_text')
     if not slide_text:
         return jsonify({'message': 'Требуется текст слайда'}), 400
 
     try:
+        prompt_obj = SystemPrompt.query.filter_by(name='suggest_image', is_active=True).first()
+        if prompt_obj:
+            system_prompt = prompt_obj.prompt_text
+        else:
+            system_prompt = (
+                "На основе следующего текста со слайда презентации создай короткий, но детальный промпт на русском языке для нейросети, "
+                "которая будет рисовать изображение. Промпт должен быть в стиле 'яркая иллюстрация, ...'. "
+                "Ответь только самим промптом, без лишних слов."
+            )
+
         image_prompt = ""
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
 
         with GigaChat(credentials=current_app.config.get("GIGACHAT_CREDENTIALS"), ssl_context=ssl_context) as giga:
-            system_prompt = (
-                "На основе следующего текста со слайда презентации создай короткий, но детальный промпт на русском языке для нейросети, "
-                "которая будет рисовать изображение. Промпт должен быть в стиле 'яркая иллюстрация, ...'. "
-                "Ответь только самим промптом, без лишних слов."
-            )
             full_prompt = f"{system_prompt}\n\nТекст со слайда:\n\"{slide_text}\""
             response = giga.chat(full_prompt)
             image_prompt = response.choices[0].message.content.strip()
