@@ -70,3 +70,36 @@ def delete_slide(slide_id):
     db.session.commit()
 
     return jsonify({'message': 'Слайд успешно удален'}), 204
+
+@slides_bp.route('/slides/<int:slide_id>', methods=['PUT'])
+@token_required
+def update_slide(slide_id):
+    slide = Slide.query.get_or_404(slide_id)
+    presentation = Presentation.query.get_or_404(slide.presentation_id)
+    if presentation.user_id != g.current_user.id:
+        return jsonify({'message': 'Доступ запрещен'}), 403
+
+    data = request.get_json()
+    
+    if 'background_color' in data:
+        slide.background_color = data['background_color']
+        slide.background_image = None
+
+    if 'background_image' in data:
+        slide.background_image = data['background_image']
+
+    db.session.commit()
+
+    elements_output = [{
+        'id': e.id, 'element_type': e.element_type, 'pos_x': e.pos_x,
+        'pos_y': e.pos_y, 'width': e.width, 'height': e.height,
+        'content': e.content, 'font_size': e.font_size
+    } for e in slide.elements]
+
+    return jsonify({
+        'id': slide.id, 
+        'slide_number': slide.slide_number,
+        'background_color': slide.background_color, 
+        'background_image': slide.background_image,
+        'elements': elements_output
+    }), 200

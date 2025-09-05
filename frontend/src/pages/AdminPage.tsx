@@ -92,7 +92,6 @@ export const AdminPage = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      // --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем правильный заголовок ---
       const response = await apiClient.post(
         `/admin/templates/${templateId}/upload-preview`, 
         formData,
@@ -100,7 +99,6 @@ export const AdminPage = () => {
           headers: { 'Content-Type': 'multipart/form-data' },
         }
       );
-      // --- КОНЕЦ ИЗМЕНЕНИЙ ---
       setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, preview_image: response.data.url } : t));
     } catch {
       showNotification('Не удалось загрузить превью', 'error');

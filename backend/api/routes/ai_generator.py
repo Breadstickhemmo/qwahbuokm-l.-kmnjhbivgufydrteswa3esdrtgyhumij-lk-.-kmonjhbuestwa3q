@@ -132,10 +132,6 @@ def upload_to_telegram(image_path, bot_token, chat_id):
 
 
 def generate_image_url(prompt: str):
-    """
-    Генерирует изображение по промпту и возвращает публичную ссылку на Telegram
-    """
-    # Получаем ключи из конфига Flask
     FUSIONBRAIN_API_KEY = current_app.config.get("KANDINSKY_API_KEY")
     FUSIONBRAIN_SECRET_KEY = current_app.config.get("KANDINSKY_SECRET_KEY")
     TELEGRAM_BOT_TOKEN = current_app.config.get("TELEGRAM_BOT_TOKEN")
@@ -156,29 +152,20 @@ def generate_image_url(prompt: str):
     )
     
     try:
-        # Получаем pipeline
         pipeline_id = api.get_pipeline()
-        
-        # Запускаем генерацию
         task_id = api.generate(prompt, pipeline_id)
-        
-        # Ждем завершения генерации
-        for attempt in range(20):  # 20 попыток по 5 секунд
+        for attempt in range(20):
             time.sleep(5)
             
             images = api.check_generation(task_id)
             
             if images is not None:
-                if images:  # Генерация завершена успешно
-                    # Сохраняем изображение временно
+                if images:
                     temp_filename = f"temp_generated_{attempt}.jpg"
                     saved_file = api.save_image(images[0], temp_filename)
                     
                     if saved_file:
-                        # Загружаем в Telegram
                         telegram_url = upload_to_telegram(saved_file, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
-                        
-                        # Удаляем временный файл
                         try:
                             os.remove(saved_file)
                         except:
@@ -193,7 +180,7 @@ def generate_image_url(prompt: str):
                     else:
                         print(f"❌ Не удалось сохранить изображение для промпта: {prompt}")
                         return None
-                else:  # Генерация завершилась ошибкой
+                else:
                     print(f"❌ Генерация изображения не удалась для промпта: {prompt}")
                     return None
         

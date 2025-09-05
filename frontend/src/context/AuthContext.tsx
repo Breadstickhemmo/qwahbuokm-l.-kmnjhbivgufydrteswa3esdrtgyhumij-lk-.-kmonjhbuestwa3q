@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { setupInterceptors } from '../services/apiService';
 import { useNotification } from './NotificationContext';
 
-export interface User { // <-- Добавляем export
+export interface User {
   id: number;
   email: string;
   is_admin: boolean;

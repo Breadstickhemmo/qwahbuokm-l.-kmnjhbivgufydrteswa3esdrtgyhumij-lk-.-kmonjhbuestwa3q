@@ -19,6 +19,7 @@ interface TemplateCarouselProps {
 
 const CARD_WIDTH = 210;
 const GAP = 16;
+const MAX_VISIBLE_CARDS = 5;
 
 export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemplate }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -49,7 +50,7 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
   };
   
   if (loading) {
-    return <CircularProgress />;
+    return <Box sx={{display: 'flex', height: 160, alignItems: 'center'}}><CircularProgress /></Box>;
   }
   
   if (error) {
@@ -60,13 +61,16 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
     return <Typography color="text.secondary">Пока нет доступных шаблонов.</Typography>;
   }
 
+  const maxVisible = Math.min(templates.length, MAX_VISIBLE_CARDS);
+  const dynamicMaxWidth = (CARD_WIDTH * maxVisible) + (GAP * (maxVisible - 1));
+
   return (
     <Box 
       ref={carouselContainerRef} 
       sx={{ 
         position: 'relative', 
         width: '100%', 
-        maxWidth: (CARD_WIDTH * 5) + (GAP * 4),
+        maxWidth: dynamicMaxWidth,
         mx: 'auto' 
       }}
     >

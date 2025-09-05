@@ -6,10 +6,14 @@ import TextFieldsIcon from '@mui/icons-material/TextFields';
 import ImageIcon from '@mui/icons-material/Image';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PaletteIcon from '@mui/icons-material/Palette';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiService';
 import { useNotification } from '../../context/NotificationContext';
 import { SlideElement } from '../../hooks/usePresentation';
+
+type ActivePanel = 'ai' | 'background';
 
 interface EditorToolbarProps {
   title: string;
@@ -17,9 +21,14 @@ interface EditorToolbarProps {
   onRenameClick: () => void;
   onAddElement: (type: SlideElement['element_type'], content?: string) => void;
   onAddVideoClick: () => void;
+  activePanel: ActivePanel;
+  onActivePanelChange: (panel: ActivePanel) => void;
 }
 
-export const EditorToolbar: React.FC<EditorToolbarProps> = ({ title, presentationId, onRenameClick, onAddElement, onAddVideoClick }) => {
+export const EditorToolbar: React.FC<EditorToolbarProps> = ({ 
+  title, presentationId, onRenameClick, onAddElement, onAddVideoClick, 
+  activePanel, onActivePanelChange 
+}) => {
   const { token } = useAuth();
   const { showNotification } = useNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,9 +102,20 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ title, presentatio
         <Divider orientation="vertical" flexItem sx={{ mr: 1, ml: 1 }} />
 
         <Tooltip title="Переименовать"><IconButton onClick={onRenameClick}><EditIcon /></IconButton></Tooltip>
-        
         <Tooltip title="Скачать .pptx"><IconButton onClick={() => handleDownload('pptx')}><DownloadIcon /></IconButton></Tooltip>
         <Tooltip title="Скачать .pdf"><IconButton onClick={() => handleDownload('pdf')}><PictureAsPdfIcon /></IconButton></Tooltip>
+        
+        <Divider orientation="vertical" flexItem sx={{ mr: 1, ml: 1 }} />
+
+        <ButtonGroup variant="outlined">
+            <Tooltip title="AI-Помощник">
+                <IconButton onClick={() => onActivePanelChange('ai')} color={activePanel === 'ai' ? 'primary' : 'default'}><AutoAwesomeIcon /></IconButton>
+            </Tooltip>
+            <Tooltip title="Настройки фона">
+                <IconButton onClick={() => onActivePanelChange('background')} color={activePanel === 'background' ? 'primary' : 'default'}><PaletteIcon /></IconButton>
+            </Tooltip>
+        </ButtonGroup>
+
       </Toolbar>
       <input
         type="file"

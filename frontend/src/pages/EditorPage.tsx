@@ -5,12 +5,15 @@ import { usePresentation, SlideElement } from '../hooks/usePresentation';
 import { SlideList } from '../components/EditorPage/SlideList';
 import { SlideEditor } from '../components/EditorPage/SlideEditor';
 import { EditorToolbar } from '../components/EditorPage/EditorToolbar';
+import { BackgroundPanel } from '../components/EditorPage/BackgroundPanel';
 import { AiChatPanel } from '../components/EditorPage/AiChatPanel';
 import apiClient from '../services/apiService';
 import { useNotification } from '../context/NotificationContext';
 
 const BASE_WIDTH = 1280;
 const BASE_HEIGHT = 720;
+
+type ActivePanel = 'ai' | 'background';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -31,7 +34,9 @@ export const EditorPage = () => {
     presentation, loading, activeSlide, 
     handleSelectSlide, handleAddSlide, handleDeleteSlide, handleRenamePresentation,
     handleReorderSlides,
-    handleAddElement, handleUpdateElement, handleDeleteElement, handleUpdateMultipleElements
+    handleAddElement, handleUpdateElement, handleDeleteElement, handleUpdateMultipleElements,
+    handleUpdateSlideBackground,
+    handleUpdateSlideBackgroundLocal,
   } = usePresentation(presentationId);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,6 +58,8 @@ export const EditorPage = () => {
   
   const [dragStartPositions, setDragStartPositions] = useState<Record<string, {x: number, y: number}>>({});
   const [draftPositions, setDraftPositions] = useState<Record<string, {x: number, y: number}>>({});
+
+  const [activePanel, setActivePanel] = useState<ActivePanel>('ai');
 
   const handleSelectElement = useCallback((elementId: string | null, event?: React.MouseEvent) => {
     if (event?.shiftKey && elementId) {
@@ -270,6 +277,8 @@ export const EditorPage = () => {
           onRenameClick={handleOpenRename} 
           onAddElement={handleAddElement}
           onAddVideoClick={handleOpenVideoModal}
+          activePanel={activePanel}
+          onActivePanelChange={setActivePanel}
         />
         <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} >
           <SlideList
@@ -316,7 +325,14 @@ export const EditorPage = () => {
               )}
             </Box>
           </Box>
-          <AiChatPanel />
+          {activePanel === 'ai' && <AiChatPanel />}
+          {activePanel === 'background' && 
+            <BackgroundPanel 
+              activeSlide={activeSlide}
+              onUpdateBackground={handleUpdateSlideBackground}
+              onUpdateBackgroundLocal={handleUpdateSlideBackgroundLocal}
+            />
+          }
         </Box>
       </Box>
       <Dialog open={isRenameOpen} onClose={handleCloseRename} fullWidth maxWidth="xs">

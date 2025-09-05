@@ -57,7 +57,7 @@ export const usePresentation = (presentationId?: string) => {
     fetchPresentation();
   }, [fetchPresentation]);
 
-  const updatePresentationState = (updateFunc: (prev: PresentationData | null) => PresentationData | null) => {
+  const updatePresentationState = useCallback((updateFunc: (prev: PresentationData | null) => PresentationData | null) => {
     setPresentation(prev => {
         const newState = updateFunc(prev);
         if (newState && activeSlide) {
@@ -66,7 +66,7 @@ export const usePresentation = (presentationId?: string) => {
         }
         return newState;
     });
-  };
+  }, [activeSlide]);
 
   useEffect(() => {
     const savePendingUpdates = async () => {
@@ -117,7 +117,7 @@ export const usePresentation = (presentationId?: string) => {
     } else {
         setPendingUpdates(prev => ({...prev, ...updates}));
     }
-  }, [activeSlide]);
+  }, [activeSlide, showNotification, updatePresentationState]);
 
   const handleUpdateElement = useCallback((elementId: string, data: Partial<SlideElement>) => {
     handleUpdateMultipleElements({ [elementId]: data }, true);
@@ -184,7 +184,7 @@ export const usePresentation = (presentationId?: string) => {
       showNotification('Не удалось сохранить порядок', 'error');
       updatePresentationState(prev => prev ? { ...prev, slides: originalSlides } : null);
     }
-  }, [presentation, showNotification]);
+  }, [presentation, showNotification, updatePresentationState]);
 
 
   const handleRenamePresentation = useCallback(async (newTitle: string) => {
@@ -196,7 +196,7 @@ export const usePresentation = (presentationId?: string) => {
     } catch (error) {
       showNotification('Не удалось переименовать', 'error');
     }
-  }, [presentation, showNotification]);
+  }, [presentation, showNotification, updatePresentationState]);
 
 
   const handleAddElement = async (type: SlideElement['element_type'], content?: string) => {
@@ -243,12 +243,49 @@ export const usePresentation = (presentationId?: string) => {
         return { ...prev, slides: newSlides };
       });
     } catch (error) { showNotification('Не удалось удалить элемент', 'error'); }
-  }, [activeSlide]);
+  }, [activeSlide, showNotification, updatePresentationState]);
+
+  const handleUpdateSlideBackgroundLocal = useCallback((slideId: number, background: { backgroundColor?: string; backgroundImage?: string | null }) => {
+    updatePresentationState(prev => {
+      if (!prev) return null;
+      const newSlides = prev.slides.map(s => {
+          if (s.id === slideId) {
+            if (background.backgroundColor) {
+                return { ...s, background_color: background.backgroundColor, background_image: null };
+            }
+            if (background.hasOwnProperty('backgroundImage')) {
+                return { ...s, background_image: background.backgroundImage ?? null };
+            }
+          }
+          return s;
+      });
+      return { ...prev, slides: newSlides };
+    });
+  }, [updatePresentationState]);
+
+  const handleUpdateSlideBackground = useCallback(async (slideId: number, background: { backgroundColor?: string; backgroundImage?: string | null }) => {
+    if (!presentation) return;
+
+    const originalSlides = presentation.slides;
+    
+    try {
+      const payload = background.hasOwnProperty('backgroundImage')
+        ? { background_image: background.backgroundImage }
+        : { background_color: background.backgroundColor };
+      
+      await apiClient.put(`/slides/${slideId}`, payload);
+    } catch (error) {
+      showNotification('Не удалось обновить фон', 'error');
+      updatePresentationState(prev => prev ? { ...prev, slides: originalSlides } : null);
+    }
+  }, [presentation, showNotification, updatePresentationState]);
 
   return { 
     presentation, loading, activeSlide, 
     handleSelectSlide, handleAddSlide, handleDeleteSlide, handleRenamePresentation,
     handleReorderSlides,
-    handleAddElement, handleUpdateElement, handleDeleteElement, handleUpdateMultipleElements
+    handleAddElement, handleUpdateElement, handleDeleteElement, handleUpdateMultipleElements,
+    handleUpdateSlideBackground,
+    handleUpdateSlideBackgroundLocal,
   };
 };
