@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Rnd, RndDragCallback, RndResizeCallback } from 'react-rnd';
-import { Box, useTheme } from '@mui/material';
+import { Box, useTheme, Switch, FormControlLabel, Typography } from '@mui/material';
 import TextareaAutosize from 'react-textarea-autosize';
 import { SlideElement } from '../../hooks/usePresentation';
 import apiClient from '../../services/apiService';
@@ -33,6 +33,10 @@ export const EditableElement: React.FC<EditableElementProps> = ({
     if (content !== element.content) { onUpdate(element.id, { content }); }
   };
 
+  const handleToggleChange = (field: 'autoplay' | 'muted', value: boolean) => {
+    onUpdate(element.id, { [field]: value });
+  };
+  
   const textStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
@@ -67,7 +71,7 @@ export const EditableElement: React.FC<EditableElementProps> = ({
     onDrag(element.id, { x: d.x, y: d.y });
   };
   
-  const handleDragStop: RndDragCallback = (e, d) => {
+  const handleDragStop: RndDragCallback = () => {
     onDragStop();
   };
   
@@ -81,6 +85,22 @@ export const EditableElement: React.FC<EditableElementProps> = ({
   };
 
   const renderContent = () => {
+    if (!element.content) {
+      return null;
+    }
+
+    const isExternalUrl = element.content.startsWith('http');
+    const src = isExternalUrl ? element.content : `${API_BASE_URL}${element.content}`;
+    
+    let youtubeSrc = '';
+    if (element.element_type === 'YOUTUBE_VIDEO') {
+        const videoId = element.content;
+        const params = new URLSearchParams();
+        if (element.autoplay) params.append('autoplay', '1');
+        if (element.muted) params.append('mute', '1');
+        youtubeSrc = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    }
+
     switch (element.element_type) {
       case 'TEXT':
         return isEditing ? (
@@ -89,26 +109,21 @@ export const EditableElement: React.FC<EditableElementProps> = ({
           <Box sx={textStyle}>{element.content}</Box>
         );
       case 'IMAGE':
-        if (!element.content) return null;
-        const isExternalUrl = element.content.startsWith('http');
-        const src = isExternalUrl ? element.content : `${API_BASE_URL}${element.content}`;
         return (
-          <img
-            src={src}
-            alt="slide element"
+          <img 
+            src={src} 
+            alt="slide element" 
             style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
             onDragStart={(e) => e.preventDefault()}
           />
         );
       case 'YOUTUBE_VIDEO':
-        const videoId = element.content;
-        const embedSrc = `https://www.youtube.com/embed/${videoId}`;
         return (
             <iframe
                 style={{ pointerEvents: isSelected ? 'none' : 'auto' }}
                 width="100%"
                 height="100%"
-                src={embedSrc}
+                src={youtubeSrc}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -116,26 +131,24 @@ export const EditableElement: React.FC<EditableElementProps> = ({
             ></iframe>
         );
       case 'UPLOADED_VIDEO':
-        if (!element.content) return null;
-        const isExternalUrlVideo = element.content.startsWith('http');
-        const srcVideo = isExternalUrlVideo ? element.content : `${API_BASE_URL}${element.content}`;
         return (
             <video
-                src={srcVideo}
+                src={src}
                 width="100%"
                 height="100%"
                 controls
+                autoPlay={element.autoplay}
+                muted={element.muted}
                 style={{ objectFit: 'contain', pointerEvents: isSelected ? 'none' : 'auto' }}
             />
         );
       case 'AUDIO':
-        if (!element.content) return null;
-        const isExternalUrlAudio = element.content.startsWith('http');
-        const srcAudio = isExternalUrlAudio ? element.content : `${API_BASE_URL}${element.content}`;
         return (
             <audio
-                src={srcAudio}
+                src={src}
                 controls
+                autoPlay={element.autoplay}
+                muted={element.muted}
                 style={{ width: '100%', height: '100%', pointerEvents: isSelected ? 'none' : 'auto' }}
             />
         );
@@ -143,6 +156,43 @@ export const EditableElement: React.FC<EditableElementProps> = ({
         return null;
     }
   };
+
+  const renderControls = () => {
+      if (!isSelected || !['YOUTUBE_VIDEO', 'UPLOADED_VIDEO', 'AUDIO'].includes(element.element_type)) {
+          return null;
+      }
+
+      return (
+          <Box
+            sx={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                mt: '4px',
+                p: 1,
+                bgcolor: 'background.paper',
+                boxShadow: 3,
+                borderRadius: 1,
+                zIndex: 10,
+                display: 'flex',
+                gap: 1,
+                alignItems: 'center',
+                transform: `scale(${1 / scale})`,
+                transformOrigin: 'top left',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+              <FormControlLabel
+                control={<Switch size="small" checked={element.autoplay} onChange={e => handleToggleChange('autoplay', e.target.checked)} />}
+                label={<Typography variant="caption">Автоплей</Typography>}
+              />
+               <FormControlLabel
+                control={<Switch size="small" checked={element.muted} onChange={e => handleToggleChange('muted', e.target.checked)} />}
+                label={<Typography variant="caption">Без звука</Typography>}
+              />
+          </Box>
+      )
+  }
 
   const resizeHandleStyle = {
     position: 'absolute',
@@ -203,6 +253,7 @@ export const EditableElement: React.FC<EditableElementProps> = ({
         }}
       >
         {renderContent()}
+        {renderControls()}
       </Box>
     </Rnd>
   );

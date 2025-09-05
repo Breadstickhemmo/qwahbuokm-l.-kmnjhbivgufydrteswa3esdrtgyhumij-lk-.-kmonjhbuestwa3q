@@ -47,3 +47,5 @@ class SlideElement(db.Model):
     content = db.Column(db.Text, nullable=True)
     font_size = db.Column(db.Integer, nullable=False, default=24)
     slide_id = db.Column(db.Integer, db.ForeignKey('slide.id'), nullable=False)
+    autoplay = db.Column(db.Boolean, default=False, nullable=False)
+    muted = db.Column(db.Boolean, default=False, nullable=False)

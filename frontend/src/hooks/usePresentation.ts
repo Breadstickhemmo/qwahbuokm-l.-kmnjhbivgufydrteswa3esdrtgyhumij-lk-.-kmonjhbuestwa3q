@@ -12,6 +12,8 @@ export interface SlideElement {
   height: number;
   content: string | null;
   font_size: number;
+  autoplay: boolean;
+  muted: boolean;
   thumbnailUrl?: string;
 }
 
@@ -28,7 +30,8 @@ export interface PresentationData {
   title: string;
   slides: Slide[];
 }
-
+// ... остальной код хука остается без изменений
+// ...
 export const usePresentation = (presentationId?: string) => {
   const [presentation, setPresentation] = useState<PresentationData | null>(null);
   const [activeSlide, setActiveSlide] = useState<Slide | null>(null);

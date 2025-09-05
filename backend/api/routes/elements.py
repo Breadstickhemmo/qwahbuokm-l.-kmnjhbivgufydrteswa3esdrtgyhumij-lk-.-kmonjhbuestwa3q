@@ -57,7 +57,9 @@ def add_element_to_slide(slide_id):
         'width': new_element.width,
         'height': new_element.height,
         'content': new_element.content,
-        'font_size': new_element.font_size
+        'font_size': new_element.font_size,
+        'autoplay': new_element.autoplay,
+        'muted': new_element.muted,
     })
     
     return jsonify(response_data), 201
@@ -78,6 +80,11 @@ def update_element(element_id):
     element.height = data.get('height', element.height)
     element.content = data.get('content', element.content)
     
+    if 'autoplay' in data:
+        element.autoplay = data['autoplay']
+    if 'muted' in data:
+        element.muted = data['muted']
+
     db.session.commit()
     return jsonify({'message': 'Элемент обновлен'}), 200
 

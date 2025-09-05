@@ -15,3 +15,6 @@ frontend/build/
 instance/
 migrations/
 static/
+
+!/backend/api/static/video_poster.png
+!/backend/api/static/audio_poster.png

@@ -3,6 +3,7 @@ import io
 import os
 import requests
 from pptx import Presentation as PptxPresentation
+from pptx.dml.color import RGBColor
 from .decorators import token_required
 from pptx.util import Inches, Pt
 import uuid
@@ -12,7 +13,6 @@ import win32com.client
 import pythoncom
 from ..models import Presentation, Slide
 from ..extensions import db
-from pptx.dml.color import RGBColor
 
 presentations_bp = Blueprint('presentations', __name__)
 
@@ -49,34 +49,20 @@ def _create_pptx_from_data(presentation_id):
 
         if slide_data.background_image:
             try:
-                print(f"Слайд {slide_data.slide_number}: пытаюсь применить картинку {slide_data.background_image}")
-                
                 image_stream = _download_image_from_url(slide_data.background_image)
                 if image_stream:
-                    pic = slide.shapes.add_picture(
-                        image_stream, 
-                        Inches(0), Inches(0), 
-                        width=prs.slide_width, 
-                        height=prs.slide_height
-                    )
-                    
-                    slide.shapes._spTree.insert(2, pic._element)
-
+                    slide.background.fill.picture(image_stream)
             except Exception as e:
-                print(f"Не удалось добавить фон-картинку {slide_data.background_image}: {e}")
-
+                print(f"Не удалось добавить фон {slide_data.background_image}: {e}")
         elif slide_data.background_color:
             try:
-                print(f"Слайд {slide_data.slide_number}: пытаюсь применить цвет {slide_data.background_color}")
-
                 hex_color = slide_data.background_color.lstrip('#')
-                if len(hex_color) == 6:
-                    r = int(hex_color[0:2], 16)
-                    g = int(hex_color[2:4], 16)
-                    b = int(hex_color[4:6], 16)
-                    
-                    slide.background.fill.solid()
-                    slide.background.fill.fore_color.rgb = RGBColor(r, g, b)
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                
+                slide.background.fill.solid()
+                slide.background.fill.fore_color.rgb = RGBColor(r, g, b)
             except Exception as e:
                 print(f"Не удалось установить цвет фона {slide_data.background_color}: {e}")
 
@@ -371,7 +357,7 @@ def upload_video():
         file.save(temp_path)
         try:
             print(f"Starting conversion from {temp_path} to {final_path}")
-            ffmpeg.input(temp_path).output(final_path, vcodec='libx24', acodec='aac', strict='experimental').run(capture_stdout=True, capture_stderr=True)
+            ffmpeg.input(temp_path).output(final_path, vcodec='libx264', acodec='aac', strict='experimental').run(capture_stdout=True, capture_stderr=True)
             print("Conversion successful")
             os.remove(temp_path)
             file_url = url_for('static', filename=f'uploads/{final_filename}', _external=False)
