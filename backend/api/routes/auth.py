@@ -50,6 +50,13 @@ def login():
             'exp': datetime.now(timezone.utc) + timedelta(hours=24)
         }, current_app.config['SECRET_KEY'], algorithm="HS256")
 
-        return jsonify({'token': token}), 200
+        return jsonify({
+            'token': token,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'is_admin': user.is_admin
+            }
+        }), 200
     
     return jsonify({'message': 'Неверный email или пароль'}), 401

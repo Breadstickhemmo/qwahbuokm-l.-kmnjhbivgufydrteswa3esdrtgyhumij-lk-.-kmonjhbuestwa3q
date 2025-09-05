@@ -78,23 +78,33 @@ export const HomePage = () => {
   return (
     <>
       <Container sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-            Начать работу
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-            <CreatePresentationCard />
-            <GenerateAiCard onClick={() => setIsAiModalOpen(true)} />
+        <Box 
+          sx={{ 
+            mb: 4, 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', lg: 'auto 1fr' },
+            gap: 4,
+            alignItems: 'flex-start'
+          }}
+        >
+          <Box>
+            <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+              Начать работу
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 3 }}>
+              <CreatePresentationCard />
+              <GenerateAiCard onClick={() => setIsAiModalOpen(true)} />
+            </Box>
+          </Box>
+          
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+              Шаблоны
+            </Typography>
+            <TemplateCarousel onSelectTemplate={handleCreateFromTemplate} />
           </Box>
         </Box>
         
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-            Шаблоны
-          </Typography>
-          <TemplateCarousel onSelectTemplate={handleCreateFromTemplate} />
-        </Box>
-
         <Divider />
         
         <Box sx={{ mt: 4 }}>

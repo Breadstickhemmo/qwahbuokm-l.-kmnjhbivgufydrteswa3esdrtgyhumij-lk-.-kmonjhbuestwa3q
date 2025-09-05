@@ -11,13 +11,10 @@ def get_templates():
     templates = Presentation.query.filter_by(is_template=True).all()
     output = []
     for t in templates:
-        first_slide = Slide.query.filter_by(presentation_id=t.id, slide_number=1).first()
-        preview_image = first_slide.background_image if first_slide else None
-        
         output.append({
             'id': t.id,
             'title': t.title,
-            'preview_image': preview_image
+            'preview_image': t.preview_image
         })
     return jsonify(output)
 

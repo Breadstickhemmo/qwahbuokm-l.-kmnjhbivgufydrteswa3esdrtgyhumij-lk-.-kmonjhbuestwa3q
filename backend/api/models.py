@@ -18,6 +18,7 @@ class Presentation(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     slides = db.relationship('Slide', backref='presentation', lazy=True, cascade="all, delete-orphan")
     is_template = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    preview_image = db.Column(db.String(255), nullable=True)
 
 class Slide(db.Model):
     id = db.Column(db.Integer, primary_key=True)

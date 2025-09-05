@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint, g
 from ..models import Presentation, Slide
 from ..extensions import db
-from .presentations import token_required
+from .decorators import token_required
 
 slides_bp = Blueprint('slides', __name__)
 

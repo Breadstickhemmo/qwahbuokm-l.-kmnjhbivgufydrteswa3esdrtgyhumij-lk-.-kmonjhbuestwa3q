@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Paper, IconButton, CircularProgress, Alert
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import apiClient from '../../services/apiService';
+import { useContainerWidth } from '../../hooks/useContainerWidth';
 
 interface Template {
   id: string;
@@ -18,13 +19,19 @@ interface TemplateCarouselProps {
 
 const CARD_WIDTH = 210;
 const GAP = 16;
-const VISIBLE_CARDS = 3;
 
 export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemplate }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  const carouselContainerRef = useRef<HTMLDivElement>(null);
+  const containerWidth = useContainerWidth(carouselContainerRef);
+
+  const visibleCards = Math.floor((containerWidth + GAP) / (CARD_WIDTH + GAP));
+  
+  const showArrows = templates.length > visibleCards;
 
   useEffect(() => {
     apiClient.get('/templates')
@@ -34,7 +41,7 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
   }, []);
 
   const handleNext = () => {
-    setCurrentIndex(prev => Math.min(prev + 1, templates.length - VISIBLE_CARDS));
+    setCurrentIndex(prev => Math.min(prev + 1, templates.length - visibleCards));
   };
 
   const handlePrev = () => {
@@ -50,11 +57,19 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
   }
   
   if (templates.length === 0) {
-    return null;
+    return <Typography color="text.secondary">Пока нет доступных шаблонов.</Typography>;
   }
 
   return (
-    <Box sx={{ position: 'relative', width: (CARD_WIDTH * VISIBLE_CARDS) + (GAP * (VISIBLE_CARDS - 1)) }}>
+    <Box 
+      ref={carouselContainerRef} 
+      sx={{ 
+        position: 'relative', 
+        width: '100%', 
+        maxWidth: (CARD_WIDTH * 5) + (GAP * 4),
+        mx: 'auto' 
+      }}
+    >
       <Box sx={{ width: '100%', overflow: 'hidden' }}>
         <Box sx={{
           display: 'flex',
@@ -82,7 +97,17 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
                 }
               }}
             >
-              <Box sx={{ height: 120, width: '100%', background: `url(${template.preview_image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              <Box sx={{ 
+                  height: 120, 
+                  width: '100%', 
+                  bgcolor: 'grey.200',
+                  backgroundImage: template.preview_image 
+                    ? `url(http://127.0.0.1:5000${template.preview_image})` 
+                    : 'none', 
+                  backgroundSize: 'cover', 
+                  backgroundPosition: 'center' 
+                }} 
+              />
               <Typography sx={{ p: 1, fontWeight: 'medium', textAlign: 'center', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {template.title}
               </Typography>
@@ -90,13 +115,13 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
           ))}
         </Box>
       </Box>
-      {currentIndex > 0 && (
-        <IconButton onClick={handlePrev} sx={{ position: 'absolute', top: '50%', left: -16, transform: 'translateY(-50%)', zIndex: 2, bgcolor: 'background.paper', '&:hover': { bgcolor: 'grey.200' } }}>
+      {showArrows && currentIndex > 0 && (
+        <IconButton onClick={handlePrev} sx={{ position: 'absolute', top: '40%', left: -16, transform: 'translateY(-50%)', zIndex: 2, bgcolor: 'background.paper', boxShadow: 3, '&:hover': { bgcolor: 'grey.200' } }}>
           <ArrowBackIosNewIcon />
         </IconButton>
       )}
-      {currentIndex < templates.length - VISIBLE_CARDS && (
-        <IconButton onClick={handleNext} sx={{ position: 'absolute', top: '50%', right: -16, transform: 'translateY(-50%)', zIndex: 2, bgcolor: 'background.paper', '&:hover': { bgcolor: 'grey.200' } }}>
+      {showArrows && currentIndex < templates.length - visibleCards && (
+        <IconButton onClick={handleNext} sx={{ position: 'absolute', top: '40%', right: -16, transform: 'translateY(-50%)', zIndex: 2, bgcolor: 'background.paper', boxShadow: 3, '&:hover': { bgcolor: 'grey.200' } }}>
           <ArrowForwardIosIcon />
         </IconButton>
       )}

@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint, g, current_app
 from ..models import SlideElement, Slide, Presentation
 from ..extensions import db
-from .presentations import token_required
+from .decorators import token_required
 import re
 import os
 

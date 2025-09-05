@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, Box, Tabs, Tab, IconButton, Alert } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, User } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import apiClient from '../../services/apiService';
 import { LoginForm } from './LoginForm';
@@ -33,8 +33,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, initialForm
     setError(null);
   };
 
-  const handleLoginSuccess = (token: string) => {
-    login(token);
+  const handleLoginSuccess = (token: string, user: User) => {
+    login(token, user);
     onClose();
   };
 
@@ -42,7 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, initialForm
     try {
       showNotification('Вы успешно зарегистрированы!', 'success');
       const response = await apiClient.post('/login', { email: values.email, password: values.password });
-      handleLoginSuccess(response.data.token);
+      handleLoginSuccess(response.data.token, response.data.user);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Не удалось войти после регистрации.';
       setError(errorMessage);

@@ -2,7 +2,6 @@ import os
 from flask import Flask
 from .config import Config
 from .extensions import db, migrate, bcrypt, cors
-from . import seed_templates
 from . import admin_cli
 
 def create_app(config_class=Config):
@@ -13,8 +12,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     bcrypt.init_app(app)
     cors.init_app(app)
-    
-    seed_templates.init_app(app)
+
     admin_cli.init_app(app)
 
     from .routes.auth import auth_bp
@@ -23,6 +21,7 @@ def create_app(config_class=Config):
     from .routes.elements import elements_bp
     from .routes.ai_generator import ai_bp 
     from .routes.templates import templates_bp
+    from .routes.admin import admin_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(presentations_bp, url_prefix='/api')
@@ -30,5 +29,6 @@ def create_app(config_class=Config):
     app.register_blueprint(elements_bp, url_prefix='/api')
     app.register_blueprint(ai_bp, url_prefix='/api')
     app.register_blueprint(templates_bp, url_prefix='/api')
+    app.register_blueprint(admin_bp, url_prefix='/api')
 
     return app

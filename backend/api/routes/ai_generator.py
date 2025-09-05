@@ -8,7 +8,7 @@ import base64
 import os
 from ..models import Presentation, Slide, SlideElement
 from ..extensions import db
-from .presentations import token_required
+from .decorators import token_required
 
 ai_bp = Blueprint('ai', __name__)
 

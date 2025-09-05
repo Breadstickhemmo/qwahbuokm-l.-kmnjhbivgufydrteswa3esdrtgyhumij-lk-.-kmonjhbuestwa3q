@@ -3,10 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { setupInterceptors } from '../services/apiService';
 import { useNotification } from './NotificationContext';
 
+export interface User { // <-- Добавляем export
+  id: number;
+  email: string;
+  is_admin: boolean;
+}
+
 interface AuthContextType {
   token: string | null;
+  user: User | null;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (token: string, user: User) => void;
   logout: () => void;
 }
 
@@ -14,36 +21,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
   const logout = useCallback(() => {
     setToken(null);
+    setUser(null);
     localStorage.removeItem('token');
-    showNotification('Ваша сессия истекла. Пожалуйста, войдите снова.', 'info');
+    localStorage.removeItem('user');
     navigate('/');
-  }, [navigate, showNotification]);
-
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token');
-    }
-  }, [token]);
+  }, [navigate]);
 
   useEffect(() => {
     setupInterceptors(logout);
   }, [logout]);
 
-  const login = (newToken: string) => {
+  const login = (newToken: string, newUser: User) => {
     setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
     showNotification('Добро пожаловать!', 'success');
     navigate('/presentations');
   };
 
   const value = {
     token,
+    user,
     isAuthenticated: !!token,
     login,
     logout,

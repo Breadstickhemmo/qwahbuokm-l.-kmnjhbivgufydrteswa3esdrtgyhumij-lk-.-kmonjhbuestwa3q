@@ -6,12 +6,12 @@ import { NotificationProvider } from '../context/NotificationContext';
 import { HomePage } from '../pages/HomePage';
 import { WelcomePage } from '../pages/WelcomePage';
 import { EditorPage } from '../pages/EditorPage';
+import { AdminPage } from '../pages/AdminPage';
 import { PrivateRoutes } from './PrivateRoutes';
 import { PublicRoutes } from './PublicRoutes';
 
 const RootLayout = () => {
   return (
-    // 3. Оборачиваем все в ThemeProvider
     <ThemeProvider theme={theme}>
       <NotificationProvider>
         <AuthProvider>
@@ -36,6 +36,10 @@ const router = createBrowserRouter([
           {
             path: '/presentations/:presentationId',
             element: <EditorPage />,
+          },
+          {
+            path: '/admin',
+            element: <AdminPage />,
           },
         ],
       },

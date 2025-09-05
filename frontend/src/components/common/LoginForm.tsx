@@ -3,9 +3,10 @@ import { TextField, Button, Typography, Link, CircularProgress } from '@mui/mate
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import apiClient from '../../services/apiService';
+import { User } from '../../context/AuthContext';
 
 interface LoginFormProps {
-  onSuccess: (token: string) => void;
+  onSuccess: (token: string, user: User) => void;
   onError: (message: string) => void;
   switchToRegister: () => void;
 }
@@ -21,7 +22,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError, switch
       try {
         onError('');
         const response = await apiClient.post('/login', values);
-        onSuccess(response.data.token);
+        onSuccess(response.data.token, response.data.user); 
       } catch (err: any) {
         onError(err.response?.data?.message || 'Произошла ошибка');
       } finally {

@@ -1,18 +1,16 @@
-from functools import wraps
 from flask import request, jsonify, Blueprint, current_app, g, send_file, url_for
-import jwt
 import io
 import os
 import requests
-from werkzeug.utils import secure_filename
 from pptx import Presentation as PptxPresentation
+from .decorators import token_required
 from pptx.util import Inches, Pt
 import uuid
 from PIL import Image
 import ffmpeg
 import win32com.client
 import pythoncom
-from ..models import User, Presentation, Slide, SlideElement
+from ..models import Presentation, Slide
 from ..extensions import db
 
 presentations_bp = Blueprint('presentations', __name__)
@@ -22,19 +20,16 @@ PIXELS_PER_INCH = 80.0
 def px_to_inches(px):
     return px / PIXELS_PER_INCH
 
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if 'authorization' in request.headers: token = request.headers['authorization'].split(' ')[1]
-        if not token: return jsonify({'message': 'Токен аутентификации отсутствует'}), 401
-        try:
-            data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            g.current_user = User.query.get(data['user_id'])
-            if not g.current_user: return jsonify({'message': 'Пользователь не найден'}), 401
-        except: return jsonify({'message': 'Недействительный токен'}), 401
-        return f(*args, **kwargs)
-    return decorated
+def _download_image_from_url(image_url):
+    try:
+        response = requests.get(image_url, stream=True, timeout=30)
+        response.raise_for_status()
+        image_data = io.BytesIO(response.content)
+        image_data.seek(0)
+        return image_data
+    except Exception as e:
+        print(f"Ошибка загрузки изображения {image_url}: {e}")
+        return None
 
 def _create_pptx_from_data(presentation_id):
     presentation_data = Presentation.query.get_or_404(presentation_id)
@@ -63,59 +58,78 @@ def _create_pptx_from_data(presentation_id):
             
             elif element.element_type == 'IMAGE' and element.content:
                 try:
-                    filename = element.content.split('/')[-1]
-                    image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                    if not os.path.exists(image_path): continue
-                    with Image.open(image_path) as img:
+                    image_stream = _download_image_from_url(element.content)
+                    if not image_stream:
+                        continue
+                    
+                    with Image.open(image_stream) as img:
                         img_width, img_height = img.size
+                    
+                    image_stream.seek(0)
+                    
                     container_aspect = container_width / container_height
                     img_aspect = img_width / img_height
+                    
                     if img_aspect > container_aspect:
                         new_width = container_width
                         new_height = new_width / img_aspect
                     else:
                         new_height = container_height
                         new_width = new_height * img_aspect
+                    
                     left_offset = (container_width - new_width) / 2
                     top_offset = (container_height - new_height) / 2
                     final_left = container_left + left_offset
                     final_top = container_top + top_offset
-                    slide.shapes.add_picture(image_path, final_left, final_top, width=new_width, height=new_height)
+                    
+                    slide.shapes.add_picture(image_stream, final_left, final_top, width=new_width, height=new_height)
+                    
                 except Exception as e:
-                    print(f"Could not add image {element.content}: {e}")
+                    print(f"Не удалось добавить изображение {element.content}: {e}")
 
             elif element.element_type == 'YOUTUBE_VIDEO' and element.content:
                 image_stream = None
-                thumbnail_urls = [f"https://img.youtube.com/vi/{element.content}/maxresdefault.jpg", f"https://img.youtube.com/vi/{element.content}/hqdefault.jpg", f"https://img.youtube.com/vi/{element.content}/0.jpg"]
+                thumbnail_urls = [
+                    f"https://img.youtube.com/vi/{element.content}/maxresdefault.jpg",
+                    f"https://img.youtube.com/vi/{element.content}/hqdefault.jpg", 
+                    f"https://img.youtube.com/vi/{element.content}/0.jpg"
+                ]
+                
                 for url in thumbnail_urls:
                     try:
-                        response = requests.get(url, stream=True)
-                        response.raise_for_status()
-                        image_stream = io.BytesIO(response.content)
-                        break
-                    except requests.exceptions.RequestException as e:
-                        print(f"Could not fetch thumbnail {url}: {e}")
+                        image_stream = _download_image_from_url(url)
+                        if image_stream:
+                            break
+                    except Exception as e:
+                        print(f"Не удалось загрузить эскиз {url}: {e}")
                         continue
+                
                 if image_stream:
                     try:
                         pic = slide.shapes.add_picture(image_stream, container_left, container_top, width=container_width, height=container_height)
                         hlink = pic.click_action.hyperlink
                         hlink.address = f"https://www.youtube.com/watch?v={element.content}"
                     except Exception as e:
-                        print(f"Could not add video thumbnail for {element.content}: {e}")
+                        print(f"Не удалось добавить эскиз видео для {element.content}: {e}")
             
             elif element.element_type == 'UPLOADED_VIDEO' and element.content:
                 try:
-                    filename = element.content.split('/')[-1]
-                    video_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                    poster_path = os.path.join(current_app.root_path, 'static', 'video_poster.png')
-                    if os.path.exists(video_path) and os.path.exists(poster_path):
-                        MIME_TYPES = {'.mp4': 'video/mp4', '.webm': 'video/webm'}
-                        _root, extension = os.path.splitext(filename)
-                        mime_type = MIME_TYPES.get(extension.lower(), 'video/mp4')
-                        slide.shapes.add_movie(video_path, container_left, container_top, container_width, container_height, poster_frame_image=poster_path, mime_type=mime_type)
+                    if element.content.startswith(('http://', 'https://')):
+                        video_thumbnail = _download_image_from_url(element.content)
+                        if video_thumbnail:
+                            slide.shapes.add_picture(video_thumbnail, container_left, container_top, width=container_width, height=container_height)
+                    else:
+                        filename = element.content.split('/')[-1]
+                        video_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                        poster_path = os.path.join(current_app.root_path, 'static', 'video_poster.png')
+                        if os.path.exists(video_path) and os.path.exists(poster_path):
+                            MIME_TYPES = {'.mp4': 'video/mp4', '.webm': 'video/webm'}
+                            _root, extension = os.path.splitext(filename)
+                            mime_type = MIME_TYPES.get(extension.lower(), 'video/mp4')
+                            slide.shapes.add_movie(video_path, container_left, container_top, container_width, container_height, poster_frame_image=poster_path, mime_type=mime_type)
                 except Exception as e:
-                    print(f"Could not add uploaded video {element.content}: {e}")
+                    print(f"Не удалось добавить загруженное видео {element.content}: {e}")
+    
     return prs, presentation_data.title
 
 @presentations_bp.route('/presentations/<string:presentation_id>/download/pptx', methods=['GET'])
@@ -239,9 +253,7 @@ def get_presentation_by_id(presentation_id):
 @presentations_bp.route('/presentations', methods=['GET'])
 @token_required
 def get_presentations():
-    # --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем фильтр, чтобы не показывать шаблоны ---
     presentations = Presentation.query.filter_by(user_id=g.current_user.id, is_template=False).order_by(Presentation.updated_at.desc()).all()
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     output = []
     for p in presentations:
         first_slide = Slide.query.filter_by(presentation_id=p.id, slide_number=1).first()
