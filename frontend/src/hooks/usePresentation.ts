@@ -267,6 +267,7 @@ export const usePresentation = (presentationId?: string) => {
     if (!presentation) return;
 
     const originalSlides = presentation.slides;
+    handleUpdateSlideBackgroundLocal(slideId, background);
     
     try {
       const payload = background.hasOwnProperty('backgroundImage')
@@ -278,7 +279,7 @@ export const usePresentation = (presentationId?: string) => {
       showNotification('Не удалось обновить фон', 'error');
       updatePresentationState(prev => prev ? { ...prev, slides: originalSlides } : null);
     }
-  }, [presentation, showNotification, updatePresentationState]);
+  }, [presentation, showNotification, updatePresentationState, handleUpdateSlideBackgroundLocal]);
 
   return { 
     presentation, loading, activeSlide, 

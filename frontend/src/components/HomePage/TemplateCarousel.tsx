@@ -21,6 +21,8 @@ const CARD_WIDTH = 210;
 const GAP = 16;
 const MAX_VISIBLE_CARDS = 5;
 
+const API_BASE_URL = apiClient.defaults.baseURL?.replace('/api', '');
+
 export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemplate }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +108,7 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({ onSelectTemp
                   width: '100%', 
                   bgcolor: 'grey.200',
                   backgroundImage: template.preview_image 
-                    ? `url(http://127.0.0.1:5000${template.preview_image})` 
+                    ? `url(${API_BASE_URL}${template.preview_image})` 
                     : 'none', 
                   backgroundSize: 'cover', 
                   backgroundPosition: 'center' 

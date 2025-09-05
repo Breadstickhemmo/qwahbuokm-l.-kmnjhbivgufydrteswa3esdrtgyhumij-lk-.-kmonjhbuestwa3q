@@ -309,7 +309,7 @@ def upload_image():
         os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         file.save(save_path)
-        file_url = url_for('static', filename=f'uploads/{filename}', _external=True)
+        file_url = url_for('static', filename=f'uploads/{filename}', _external=False)
         return jsonify({'url': file_url}), 200
 
 @presentations_bp.route('/upload/video', methods=['POST'])

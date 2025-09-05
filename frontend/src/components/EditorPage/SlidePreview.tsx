@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Paper, Box, CircularProgress } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import { Slide, SlideElement } from '../../hooks/usePresentation';
+import apiClient from '../../services/apiService';
 
 const ElementPreview: React.FC<{ element: SlideElement }> = ({ element }) => {
     const [thumb, setThumb] = useState<string | null>(null);
@@ -104,6 +105,8 @@ const ElementPreview: React.FC<{ element: SlideElement }> = ({ element }) => {
     );
 };
 
+const API_BASE_URL = apiClient.defaults.baseURL?.replace('/api', '');
+
 export const SlidePreview: React.FC<{ slide: Slide }> = ({ slide }) => {
   return (
     <Paper
@@ -115,7 +118,7 @@ export const SlidePreview: React.FC<{ slide: Slide }> = ({ slide }) => {
         overflow: 'hidden',
         pointerEvents: 'none',
         backgroundColor: slide.background_image ? 'transparent' : slide.background_color,
-        backgroundImage: slide.background_image ? `url(http://127.0.0.1:5000${slide.background_image})` : 'none',
+        backgroundImage: slide.background_image ? `url(${API_BASE_URL}${slide.background_image})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}

@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { Slide, SlideElement } from '../../hooks/usePresentation';
 import { EditableElement } from './EditableElement';
+import apiClient from '../../services/apiService';
 
 interface SlideEditorProps {
   slide: Slide | null;
@@ -15,6 +16,8 @@ interface SlideEditorProps {
   onDrag: (id: string, newPosition: { x: number, y: number }) => void;
   onDragStop: () => void;
 }
+
+const API_BASE_URL = apiClient.defaults.baseURL?.replace('/api', '');
 
 export const SlideEditor = React.forwardRef<HTMLDivElement, SlideEditorProps>(({ 
     slide, scale, selectedElementIds, draftPositions, onSelectElement, onUpdateElement,
@@ -40,7 +43,7 @@ export const SlideEditor = React.forwardRef<HTMLDivElement, SlideEditorProps>(({
         overflow: 'hidden',
         userSelect: 'none',
         backgroundColor: slide.background_image ? 'transparent' : slide.background_color,
-        backgroundImage: slide.background_image ? `url(http://127.0.0.1:5000${slide.background_image})` : 'none',
+        backgroundImage: slide.background_image ? `url(${API_BASE_URL}${slide.background_image})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
